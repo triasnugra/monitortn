@@ -27,7 +27,7 @@ export async function overlay(out,C,RES,fs){
  if(reg?.tunggu)out.warnings.push({lvl:'kuning',e:'pasar',t:reg.tunggu,aksi:null});
  if(eu&&eu.arah==='menguat')out.warnings.push({lvl:'info',e:'makro',t:`EUR/USD ${eu.arah} (${eu.d3.toFixed(2)}% 3 hari): hindari short BTC`,aksi:null});
  // keputusan per sinyal menunggu
- let old=[];if(!process.env.LOCAL_DIR){try{const r=await fetch(`https://${C.owner}.github.io/monitortn/decisions.json`);if(r.ok)old=await r.json()}catch{}}
+ let old=[];if(!process.env.LOCAL_DIR){const r=await fetch(`https://${C.owner}.github.io/monitortn/decisions.json`);if(r.ok)old=await r.json();else if(r.status!==404)throw new Error('decisions.json HTTP '+r.status+': build dihentikan agar riwayat tidak hilang')}
  const seen=new Map(old.map(d=>[d.k,d])),today=new Date().toISOString().slice(0,10),cache={};
  for(const e of out.engines)for(const r of e.pending){
   let kp='-',kn='';try{
