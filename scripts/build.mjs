@@ -24,7 +24,8 @@ for(const e of C.engines){
  if(!last){W('merah',e.id,'Tidak ada baris jurnal untuk agen '+e.agen,'Periksa config.json');continue}
  for(const r of all)RES[e.id+'|'+r.aset+'|'+r.waktu.slice(0,10)+'|'+r.arah]={h:r.hasil,R:fin(r)?net(r):null};const dir={};for(const s of['LONG','SHORT'])dir[s]=stats(all.filter(r=>r.arah===s));
  const st=stats(all),sc=stats(com),s7=stats(all.filter(r=>r.waktu>=new Date(now-7*DAY).toISOString().slice(0,10)));
- const pend=all.filter(r=>r.hasil==='menunggu');for(const r of pend){const p=await price(r.aset);r.px=p;r.dist=p?(p-+r.entry)/+r.entry*100:null}
+ const pend=(()=>{const s=new Set();return all.filter(r=>r.hasil==='menunggu').reverse().filter(r=>{const k=r.aset+'|'+r.arah+'|'+r.entry;if(s.has(k))return false;s.add(k);return true}).reverse()})();
+ const dupN=all.filter(r=>r.hasil==='menunggu').length-pend.length;if(dupN>0)W('info',e.id,dupN+' sinyal menunggu duplikat (koin, arah, entry sama dengan analisis lebih baru) disembunyikan',null);for(const r of pend){const p=await price(r.aset);r.px=p;r.dist=p?(p-+r.entry)/+r.entry*100:null}
  const ready=[[st.terisi>=C.minTrades,`Trade terisi ${st.terisi}/${C.minTrades}`],[st.minggu>=C.minWeeks,`Minggu ${st.minggu}/${C.minWeeks}`],[!!st.ci&&st.ci[0]>0,'CI95 bawah R/trade > 0'],[st.pf>=1.2,'Profit factor >= 1,2']];
  out.engines.push({id:e.id,nama:e.nama,start:e.start,all:st,sejakBersama:sc,tujuhHari:s7,dir,ready,layak:ready.every(x=>x[0]),
   jurnal:all.slice(-120).reverse().map(r=>({w:r.waktu.slice(0,16),a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,h:r.hasil,R:r.R,al:r.alasan,sk:r.score??null,gr:r.grade??null})),
