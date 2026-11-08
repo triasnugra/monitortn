@@ -38,7 +38,7 @@ function barAtas(){let b='';
  const biru=(D.log||[]).filter(l=>lapState(l).c==='biru').length;
  if(biru)b+=`<div class="card biru"><b>${biru} laporan belum dikirim ke Claude lebih dari 3 hari.</b> Lihat bagian Laporan untuk Claude.</div>`;
  const g=D.regime;
- if(g)b+=`<div class="card"><b class="${g.status==='NORMAL'?'ok':g.status==='SELEKTIF'?'kuning':'merah'}">Pasar: ${esc(g.status)}</b> ${esc(g.flags.join('; ')||'kondisi normal')}<br><small>BTC ATR14 ${f(g.atrPct,1)}% · range 14 hari ${f(g.range14,1)}% · volume ${f(g.volRatio)}x rata-rata${D.eur?' · EUR/USD '+esc(D.eur.arah)+' ('+f(D.eur.d3)+'% 3 hari, informasi saja)':''}</small></div>`;
+ if(g)b+=`<div class="card"><b class="${g.status==='NORMAL'?'ok':g.status==='SELEKTIF'?'kuning':'merah'}">Pasar: ${esc(g.status)}</b> ${esc(g.flags.join('; ')||'kondisi normal')}<br><small>BTC ATR14 ${f(g.atrPct,1)}% · range 14 hari ${f(g.range14,1)}% · volume altcoin ${f(g.volRatio)}x (median 7/60 hari) · BTC ${f(g.btcVr)}x${D.eur?' · EUR/USD '+esc(D.eur.arah)+' ('+f(D.eur.d3)+'% 3 hari, informasi saja)':''}</small></div>`;
  return b}
 
 function html(){const E=D.engines;let h=barAtas();
@@ -56,14 +56,23 @@ function html(){const E=D.engines;let h=barAtas();
  if(e)h+='<div class="card w"><table><tr><th>Waktu<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Hasil<th>R<th>Skor<th>Alasan</tr>'+e.jurnal.map(r=>`<tr><td>${esc(r.w)}<td>${esc(r.a)}<td>${esc(r.d)}<td>${esc(r.en)}<td>${esc(r.sl)}<td>${esc(r.tp)}<td class="${esc(r.h)}">${esc(r.h)}<td>${esc(r.R)}<td>${esc(r.sk??'')} ${esc(r.gr??'')}<td>${esc(r.al||'')}</tr>`).join('')+'</table></div>';
  if(D.audit)h+='<h2>Audit lapisan keputusan</h2><div class="card">'+(D.audit.grup.map(g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)).join(' · ')||'Belum ada sinyal selesai')+'<br><small>'+esc(D.audit.catatan)+'</small></div>';
  if(D.gapDiag)h+='<h2>Diagnostik data bolong</h2><div class="card">'+D.gapDiag.gagal.length+'/'+D.gapDiag.cek+' koin top volume: '+esc(D.gapDiag.gagal.map(x=>x.s).join(', ')||'tidak ada')+'</div>';
- h+='<h2>@eliz883: kecocokan</h2><div class="card">Postingan terakhir di monitor: '+esc(D.eliz.lastPost||'-')+'<br>Ticker disebut: '+esc(D.eliz.tickers.join(', ')||'-')+'<div class="w"><table>'+D.eliz.cocok.map(c=>`<tr><td>$${esc(c.t)}<td>`+c.sinyal.map(s=>esc(s.e)+': '+esc(s.n.join('; ')||'tidak ada sinyal')).join(' | ')+'</tr>').join('')+'</table></div><small>Postingan baru: lampirkan (.docx) di chat Claude; Claude memberi data/eliz-posts.json terbaru.</small></div>';
+ if(D.ujiHarian)h+='<h2>Uji batas harian (hipotesis)</h2><div class="card">Batas uji: '+D.ujiHarian.cap+' sinyal/hari. Hari ini: '+D.ujiHarian.hariIni+' sinyal, '+D.ujiHarian.lewatHariIni+' melewati batas.<br>'+(D.ujiHarian.grup||[]).map(g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)).join(' · ')+'<br><small>Dibaca hanya setelah tiap grup >= 30 trade.</small></div>';
+ if(D.ujiEliz)h+='<h2>Uji volume vs @eliz883</h2><div class="card">Postingan yang menyebut volume rendah: '+D.ujiEliz.postVolumeRendah+'. Hari terukur: '+D.ujiEliz.hariTerukur+'. Cocok: '+D.ujiEliz.cocok+'.<br><small>'+esc(D.ujiEliz.catatan)+'</small></div>';
+ h+=tharpHtml();h+='<h2>@eliz883: kecocokan</h2><div class="card">Postingan terakhir di monitor: '+esc(D.eliz.lastPost||'-')+'<br>Ticker disebut: '+esc(D.eliz.tickers.join(', ')||'-')+'<div class="w"><table>'+D.eliz.cocok.map(c=>`<tr><td>$${esc(c.t)}<td>`+c.sinyal.map(s=>esc(s.e)+': '+esc(s.n.join('; ')||'tidak ada sinyal')).join(' | ')+'</tr>').join('')+'</table></div><small>Postingan baru: lampirkan (.docx) di chat Claude; Claude memberi data/eliz-posts.json terbaru.</small></div>';
  return h+lapHtml()}
 
+function tharpHtml(){
+ let h='<h2>Uji ala Van Tharp</h2><div class="card w"><table><tr><th>Mesin<th>N<th>R/trade<th>SD<th>SQN<th>SQN100<th>Kelas<th>Biaya impas<th>R @0,1%<th>R @0,3%<th>R @0,5%<th>3 teratas / untung<th>R tanpa 3 teratas</tr>';
+ for(const e of D.engines){const t=e.tharp;if(!t||!t.ok){h+=`<tr><td>${esc(e.id)}<td colspan="12">data belum cukup`;continue}
+  const b=t.biaya;h+=`<tr><td><b>${esc(e.id)}</b><td>${t.n}<td>${f(t.mean)}<td>${f(t.sd)}<td>${f(t.sqn)}<td>${f(t.sqn100)}<td>${esc(t.cls)}${t.n<30?' <span class="kuning">(N&lt;30)</span>':''}<td class="${t.be<0.3?'kuning':''}">${f(t.be)}%<td>${f(b[1].r)}<td>${f(b[3].r)}<td>${f(b[4].r)}<td>${t.top3==null?'-':Math.round(t.top3*100)+'%'}<td>${f(t.meanEx3)}</tr>`}
+ h+='</table></div><div class="card w"><b>Distribusi R (jumlah trade per rentang)</b><table><tr><th>Mesin'+((D.engines.find(e=>e.tharp&&e.tharp.ok)||{tharp:{dist:[]}}).tharp.dist||[]).map(d=>'<th>'+esc(d.l)).join('')+'</tr>';
+ for(const e of D.engines)if(e.tharp&&e.tharp.ok)h+='<tr><td>'+esc(e.id)+e.tharp.dist.map(d=>'<td>'+d.n).join('')+'</tr>';
+ return h+'</table><small>SQN = akar(N) × rata-rata R ÷ simpangan baku R. Jangan ditafsirkan sebelum N ≥ 30. SQN100 membatasi N pada 100. Biaya impas = biaya pulang-pergi (%) yang membuat R/trade jadi nol.</small></div>'}
 function lapHtml(){
  let h='<h2>Laporan untuk Claude</h2><div class="card"><small>Status penyimpanan: '+esc(fbMsg)+'</small></div><small>Maksimal 3 kolom. Kolom baru dibuat tiap 3 hari. Biru = belum dilaporkan 3 hari atau lebih; hijau = sudah dilaporkan.</small><div class="kol">';
  (D.log||[]).forEach((l,i)=>{const s=lapState(l),u=Math.floor((Date.now()-new Date(l.t))/DMS);
   h+=`<div class="card ${s.c}"><b>Kolom ${i+1}</b> · dibuat ${esc(l.t.slice(0,16).replace('T',' '))} UTC (${u} hari lalu)<br><b>${s.c==='hijau'?'Sudah dilaporkan: '+esc(s.r):s.c==='biru'?'BELUM dilaporkan (3 hari atau lebih)':'Belum dilaporkan'}</b><br><button onclick="lapCopy(${i})">Salin laporan</button> <input type="date" id="d${esc(l.id)}" value="${esc(s.r||new Date().toISOString().slice(0,10))}"><button onclick="lapSave('${esc(l.id)}')">Simpan tanggal lapor</button>${s.r?`<button onclick="lapClear('${esc(l.id)}')">Hapus</button>`:''}<textarea readonly>${esc(l.md)}</textarea></div>`});
- return h+'</div><button onclick="navigator.clipboard.writeText(D.laporan)">Salin laporan terkini (live/tiap 30 menit)</button>'}
+ return h+'</div><button onclick="navigator.clipboard.writeText(D.laporan)">Salin laporan terkini (live)</button>'}
 
 function lapCopy(i){navigator.clipboard.writeText(D.log[i].md)}
 function lapSave(id){const v=document.getElementById('d'+id).value;if(/^\d{4}-\d{2}-\d{2}$/.test(v))writeTgl(id,v)}
