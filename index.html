@@ -63,7 +63,7 @@ function lapHtml(){
  let h='<h2>Laporan untuk Claude</h2><div class="card"><small>Status penyimpanan: '+esc(fbMsg)+'</small></div><small>Maksimal 3 kolom. Kolom baru dibuat tiap 3 hari. Biru = belum dilaporkan 3 hari atau lebih; hijau = sudah dilaporkan.</small><div class="kol">';
  (D.log||[]).forEach((l,i)=>{const s=lapState(l),u=Math.floor((Date.now()-new Date(l.t))/DMS);
   h+=`<div class="card ${s.c}"><b>Kolom ${i+1}</b> · dibuat ${esc(l.t.slice(0,16).replace('T',' '))} UTC (${u} hari lalu)<br><b>${s.c==='hijau'?'Sudah dilaporkan: '+esc(s.r):s.c==='biru'?'BELUM dilaporkan (3 hari atau lebih)':'Belum dilaporkan'}</b><br><button onclick="lapCopy(${i})">Salin laporan</button> <input type="date" id="d${esc(l.id)}" value="${esc(s.r||new Date().toISOString().slice(0,10))}"><button onclick="lapSave('${esc(l.id)}')">Simpan tanggal lapor</button>${s.r?`<button onclick="lapClear('${esc(l.id)}')">Hapus</button>`:''}<textarea readonly>${esc(l.md)}</textarea></div>`});
- return h+'</div><button onclick="navigator.clipboard.writeText(D.laporan)">Salin laporan terkini (live)</button>'}
+ return h+'</div><button onclick="navigator.clipboard.writeText(D.laporan)">Salin laporan terkini (live/tiap 30 menit)</button>'}
 
 function lapCopy(i){navigator.clipboard.writeText(D.log[i].md)}
 function lapSave(id){const v=document.getElementById('d'+id).value;if(/^\d{4}-\d{2}-\d{2}$/.test(v))writeTgl(id,v)}
