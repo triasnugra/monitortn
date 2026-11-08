@@ -1,5 +1,31 @@
-{"owner":"triasnugra","commonStart":"2026-10-29","minTrades":150,"minWeeks":20,"costPct":0.2,
- "engines":[
-  {"id":"tn","nama":"Mesin tn","repo":"tn","agen":"Aturan Eliz","start":"2026-10-14"},
-  {"id":"tnv2","nama":"Mesin tnv2 (gerbang)","repo":"tnv2","agen":"Eliz v2","start":"2026-10-29"},
-  {"id":"tnv2c2","nama":"Mesin tnv2c2","repo":"tnv2c2","agen":"Aturan Eliz","start":"2026-10-29"}]}
+{
+ "owner": "triasnugra",
+ "commonStart": "2026-10-29",
+ "minTrades": 150,
+ "minWeeks": 20,
+ "costPct": 0.2,
+ "engines": [
+  {
+   "id": "tn",
+   "nama": "Mesin tn",
+   "repo": "tn",
+   "agen": "Aturan Eliz",
+   "start": "2026-10-14"
+  },
+  {
+   "id": "tnv2",
+   "nama": "Mesin tnv2 (gerbang)",
+   "repo": "tnv2",
+   "agen": "Eliz v2",
+   "start": "2026-10-29"
+  },
+  {
+   "id": "tnv2c2",
+   "nama": "Mesin tnv2c2",
+   "repo": "tnv2c2",
+   "agen": "Aturan Eliz",
+   "start": "2026-10-29"
+  }
+ ],
+ "dailyCap": 5
+}
