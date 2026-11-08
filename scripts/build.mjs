@@ -25,11 +25,12 @@ for(const e of C.engines){
  const dd={};[...all].sort((a,b)=>a.waktu<b.waktu?-1:a.waktu>b.waktu?1:0).forEach(r=>{const d=r.waktu.slice(0,10);dd[d]=(dd[d]||0)+1;r.rk=dd[d]});
 for(const r of all)ALL.push({e:e.id,w:r.waktu,d:r.waktu.slice(0,10),a:r.aset,arah:r.arah,h:r.hasil,R:fin(r)?net(r):null,rk:r.rk});
 for(const r of all)RES[e.id+'|'+r.aset+'|'+r.waktu.slice(0,10)+'|'+r.arah]={h:r.hasil,R:fin(r)?net(r):null};const dir={};for(const s of['LONG','SHORT'])dir[s]=stats(all.filter(r=>r.arah===s));
- const st=stats(all),sc=stats(com),s7=stats(all.filter(r=>r.waktu>=new Date(now-7*DAY).toISOString().slice(0,10)));
+ const th=tharp(all.filter(fin)),st=stats(all),sc=stats(com),s7=stats(all.filter(r=>r.waktu>=new Date(now-7*DAY).toISOString().slice(0,10)));
  const pend=(()=>{const s=new Set();return all.filter(r=>r.hasil==='menunggu').reverse().filter(r=>{const k=r.aset+'|'+r.arah+'|'+r.entry;if(s.has(k))return false;s.add(k);return true}).reverse()})();
  const dupN=all.filter(r=>r.hasil==='menunggu').length-pend.length;if(dupN>0)W('info',e.id,dupN+' sinyal menunggu duplikat (koin, arah, entry sama dengan analisis lebih baru) disembunyikan',null);for(const r of pend){const p=await price(r.aset);r.px=p;r.dist=p?(p-+r.entry)/+r.entry*100:null}
  const ready=[[st.terisi>=C.minTrades,`Trade terisi ${st.terisi}/${C.minTrades}`],[st.minggu>=C.minWeeks,`Minggu ${st.minggu}/${C.minWeeks}`],[!!st.ci&&st.ci[0]>0,'CI95 bawah R/trade > 0'],[st.pf>=1.2,'Profit factor >= 1,2']];
- out.engines.push({id:e.id,nama:e.nama,start:e.start,all:st,sejakBersama:sc,tujuhHari:s7,dir,ready,layak:ready.every(x=>x[0]),
+ if(th.ok&&th.n>=30){if(th.be<0.3)W('kuning',e.id,`Edge tipis terhadap biaya: biaya impas ${th.be.toFixed(2)}% (asumsi ${C.costPct}%). Selisih biaya/slippage kecil dapat menghapus profit`,'Uji biaya nyata di Binance (fee tier, slippage) sebelum uang sungguhan');if(th.top3!=null&&th.top3>0.5)W('kuning',e.id,`Hasil terkonsentrasi: 3 trade teratas = ${(th.top3*100).toFixed(0)}% dari total untung`,'Tanpa 3 trade itu R/trade = '+(th.meanEx3==null?'-':th.meanEx3.toFixed(2)))}
+ out.engines.push({id:e.id,nama:e.nama,start:e.start,tharp:th,all:st,sejakBersama:sc,tujuhHari:s7,dir,ready,layak:ready.every(x=>x[0]),
   jurnal:all.slice(-120).reverse().map(r=>({w:r.waktu.slice(0,16),a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,h:r.hasil,R:r.R,al:r.alasan,sk:r.score??null,gr:r.grade??null})),
   pending:pend.map(r=>({a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,px:r.px,dist:r.dist,w:r.waktu.slice(0,10),rk:r.rk}))});
  const lastAny=J.at(-1),age=(now-new Date(lastAny.waktu.replace(' UTC','Z').replace(' ','T')))/36e5;
@@ -40,6 +41,26 @@ for(const r of all)RES[e.id+'|'+r.aset+'|'+r.waktu.slice(0,10)+'|'+r.arah]={h:r.
  if(L.terisi>=15&&S.terisi>=15&&(L.netR??0)<0&&(S.netR??0)>0.3)W('kuning',e.id,`Hasil bertumpu pada satu arah: LONG ${f2(L.netR)}R (n=${L.terisi}) vs SHORT ${f2(S.netR)}R (n=${S.terisi}). Kemungkinan bergantung rezim pasar`,'Pertimbangkan filter searah tren makro; uji lintas rezim');
  if(st.sinyal&&st.tdkIsi/st.sinyal>.3)W('kuning',e.id,`${(100*st.tdkIsi/st.sinyal).toFixed(0)}% sinyal tidak terisi: entry limit terlalu jauh`,'Batasi jarak entry ke harga (tnv2c2: maks 0,75R)');
  if(st.minggu<12)W('info',e.id,`Hanya ${st.minggu} minggu data: CI per minggu belum dapat dihitung`,'Syarat 20 minggu tetap penentu')}
+
+// ===== Lapisan uji ala Van Tharp: SQN, sensitivitas biaya, distribusi R =====
+function tharp(f){
+ const n=f.length;if(n<2)return{n,ok:false};
+ const g=f.map(r=>+r.R),risk=f.map(r=>Math.abs(+r.entry-+r.sl)/+r.entry);
+ const mean=a=>a.reduce((x,y)=>x+y,0)/a.length,sd=a=>{const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1))};
+ const net=c=>g.map((x,i)=>x-(c/100)/risk[i]);
+ const nr=net(C.costPct),m=mean(nr),s=sd(nr),sqn=s>0?Math.sqrt(n)*m/s:null,sqn100=s>0?Math.sqrt(Math.min(n,100))*m/s:null;
+ const be=mean(g)/mean(risk.map(x=>1/x))*100;
+ const edges=[['<= -1,1',x=>x<=-1.1],['-1,1 s/d -0,5',x=>x>-1.1&&x<=-.5],['-0,5 s/d +0,5',x=>x>-.5&&x<.5],['+0,5 s/d +1,5',x=>x>=.5&&x<1.5],['+1,5 s/d +2,5',x=>x>=1.5&&x<=2.5],['> +2,5',x=>x>2.5]];
+ const srt=[...nr].sort((a,b)=>b-a),pos=srt.filter(x=>x>0).reduce((a,b)=>a+b,0),top3=srt.slice(0,3).filter(x=>x>0).reduce((a,b)=>a+b,0);
+ const cls=sqn==null?'-':sqn<1.6?'buruk':sqn<2?'di bawah rata-rata':sqn<2.5?'rata-rata':sqn<3?'bagus':'sangat bagus';
+ return{ok:true,n,mean:m,sd:s,sqn,sqn100,cls,be,
+  biaya:[0,.1,.2,.3,.5].map(c=>({c,r:mean(net(c))})),
+  dist:edges.map(([l,fn])=>({l,n:g.filter(fn).length})),
+  top3:pos>0?top3/pos:null,meanEx3:n>3?mean(srt.slice(3)):null}}
+function tharpMd(out){let m='\n## Uji ala Van Tharp (SQN, biaya, distribusi R)\n';
+ for(const e of out.engines){const t=e.tharp;if(!t||!t.ok){m+=`- ${e.id}: data belum cukup\n`;continue}
+  m+=`- ${e.id}: N=${t.n}, R/trade ${t.mean.toFixed(2)}, SD ${t.sd.toFixed(2)}, SQN ${t.sqn==null?'-':t.sqn.toFixed(2)} (SQN100 ${t.sqn100==null?'-':t.sqn100.toFixed(2)}, ${t.cls}); biaya impas ${t.be.toFixed(2)}%; biaya 0,1/0,3/0,5%: ${[1,3,4].map(i=>t.biaya[i].r.toFixed(2)).join(' / ')}R; 3 trade teratas = ${t.top3==null?'-':(t.top3*100).toFixed(0)+'%'} dari total untung; R/trade tanpa 3 teratas ${t.meanEx3==null?'-':t.meanEx3.toFixed(2)}\n    distribusi R: ${t.dist.map(d=>d.l+': '+d.n).join(' | ')}\n`}
+ return m+'- Catatan: SQN bergantung pada jumlah trade; sebelum N >= 30 jangan ditafsirkan. Skala kelas SQN adalah acuan umum, cocokkan dengan buku.\n'}
 function f2(x){return x==null?'-':x.toFixed(2)}
 W('kuning','monitor','Penilaian monitor memakai hasil jurnal mesin (masa order 7 hari), bukan penilaian candle sendiri, sehingga tidak ada EXPIRED 3 hari yang menutup sinyal pemenang','Bila angka monitor berbeda dari jurnal mesin, itu bug monitor: laporkan');
 for(const e of out.engines)if(!e.layak)W('merah',e.id,'BELUM LAYAK uang sungguhan: '+e.ready.filter(x=>!x[0]).map(x=>x[1]).join('; '),'Jika tetap trading di Binance, risiko maks 0,25% per trade');
@@ -54,7 +75,7 @@ for(const e of out.engines)md+=`| ${e.nama} | ${e.all.sinyal} | ${e.all.terisi} 
 md+=`\n## LONG vs SHORT\n`;for(const e of out.engines)md+=`- ${e.id}: LONG n=${e.dir.LONG.terisi} R/trade ${f(e.dir.LONG.netR)}; SHORT n=${e.dir.SHORT.terisi} R/trade ${f(e.dir.SHORT.netR)}\n`;
 md+=`\n## Warning\n`;for(const w of out.warnings)md+=`- [${w.lvl}] ${w.e}: ${w.t}${w.aksi?' -> '+w.aksi:''}\n`;
 md+=`\n## Postingan terbaru @eliz883 (tickers: ${out.eliz.tickers.join(', ')||'-'})\n`;for(const p of out.eliz.posts.slice(0,5))md+=`- ${p.tgl}: ${p.teks.slice(0,400)}\n`;
-md+=OV;md+=`\n## Permintaan\nEvaluasi laporan ini, cocokkan dengan postingan @eliz883 di atas, lalu buatkan full coding perbaikan (zip utuh siap commit lewat GitHub web UI). Prinsip: jangan ubah core.mjs/trade-sim.mjs selama forward test tanpa memulai protokol baru; jujur soal sampel kecil dan rezim pasar. Unggah zip repo mesin terbaru bila perlu diverifikasi.\n`;
+md+=OV+tharpMd(out);md+=`\n## Permintaan\nEvaluasi laporan ini, cocokkan dengan postingan @eliz883 di atas, lalu buatkan full coding perbaikan (zip utuh siap commit lewat GitHub web UI). Prinsip: jangan ubah core.mjs/trade-sim.mjs selama forward test tanpa memulai protokol baru; jujur soal sampel kecil dan rezim pasar. Unggah zip repo mesin terbaru bila perlu diverifikasi.\n`;
 out.laporan=md;
 let LG=[];if(!LOCAL){const r=await fetch(`https://${C.owner}.github.io/monitortn/laporan-log.json`);if(r.ok)LG=await r.json();else if(r.status!==404)throw new Error('laporan-log.json HTTP '+r.status+': build dihentikan agar riwayat tidak hilang')}
 if(!LG.length||now-new Date(LG.at(-1).t).getTime()>=3*DAY)LG.push({id:out.updated.slice(0,16).replace(/[-:T]/g,''),t:out.updated,md});
