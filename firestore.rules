@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Koleksi tanggal lapor. Baca publik; tulis hanya format tanggal valid (atau kosong = dibatalkan).
+    match /laporan/{id} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['tanggal','diperbarui'])
+        && request.resource.data.tanggal is string
+        && request.resource.data.tanggal.matches('^([0-9]{4}-[0-9]{2}-[0-9]{2})?$')
+        && request.resource.data.diperbarui == request.time
+        && id.matches('^[0-9]{12,14}$');
+      allow delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

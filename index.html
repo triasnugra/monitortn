@@ -1,28 +1,91 @@
 <!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Monitor tn</title>
-<style>:root{--bg:#fff;--fg:#1a1a1a;--mu:#666;--bd:#ddd;--r:#c0392b;--y:#b7791f;--g:#1e8449;--c:#f6f6f6}@media(prefers-color-scheme:dark){:root{--bg:#121212;--fg:#eee;--mu:#999;--bd:#333;--r:#ff6b5b;--y:#e0b050;--g:#4cd137;--c:#1c1c1c}}
-body{margin:0;padding:12px;font:14px system-ui,sans-serif;background:var(--bg);color:var(--fg);max-width:1100px;margin:auto}h1{font-size:18px}h2{font-size:15px;margin-top:22px}.card{background:var(--c);border:1px solid var(--bd);border-radius:8px;padding:10px;margin:8px 0}.w{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid var(--bd);padding:4px 6px;text-align:left;white-space:nowrap}.merah{color:var(--r)}.kuning{color:var(--y)}.ok,.TP{color:var(--g)}.SL{color:var(--r)}button,select{padding:6px 10px;margin:2px;border:1px solid var(--bd);background:var(--c);color:var(--fg);border-radius:6px}textarea{width:100%;height:180px;background:var(--c);color:var(--fg);border:1px solid var(--bd)}small{color:var(--mu)}.kol{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}.biru{border-color:#2f7bff;background:rgba(47,123,255,.13)}.hijau{border-color:var(--g);background:rgba(30,132,73,.13)}.lap textarea{height:140px}.lap input{padding:5px}</style></head><body>
-<h1>Monitor mesin tn, tnv2, tnv2c2</h1><small id="up"></small><div id="app">Memuat… (jika tetap begini, JavaScript tidak berjalan: buka konsol browser dan salin errornya)</div>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mu:#666;--bd:#ddd;--r:#c0392b;--y:#b7791f;--g:#1e8449;--c:#f6f6f6;--b:#2f7bff}
+@media(prefers-color-scheme:dark){:root{--bg:#121212;--fg:#eee;--mu:#999;--bd:#333;--r:#ff6b5b;--y:#e0b050;--g:#4cd137;--c:#1c1c1c;--b:#5b9bff}}
+body{margin:0 auto;padding:12px;font:14px system-ui,sans-serif;background:var(--bg);color:var(--fg);max-width:1100px}
+h1{font-size:18px}h2{font-size:15px;margin-top:22px}
+.card{background:var(--c);border:1px solid var(--bd);border-radius:8px;padding:10px;margin:8px 0}
+.w{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid var(--bd);padding:4px 6px;text-align:left;white-space:nowrap}
+.merah{color:var(--r)}.kuning{color:var(--y)}.ok,.TP{color:var(--g)}.SL{color:var(--r)}.info{color:var(--mu)}
+button,select,input{padding:6px 10px;margin:2px;border:1px solid var(--bd);background:var(--c);color:var(--fg);border-radius:6px;font:inherit}
+textarea{width:100%;height:140px;background:var(--c);color:var(--fg);border:1px solid var(--bd);box-sizing:border-box}
+small{color:var(--mu)}.kol{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.biru{border-color:var(--b);background:rgba(47,123,255,.13)}.hijau{border-color:var(--g);background:rgba(30,132,73,.13)}
+</style></head><body>
+<h1>Monitor mesin tn, tnv2, tnv2c2</h1><small id="up"></small><div id="app">Memuat…</div>
 <script>
-const f=(x,d=2)=>x==null?'-':(+x).toFixed(d),p=x=>x==null?'-':Math.round(x*100)+'%';let D,cur=0;
-const showErr=(t,m)=>{document.getElementById('app').innerHTML='<div class="card"><b class="merah">'+t+'</b> '+String(m).replace(/</g,'&lt;')+'<br><small>Salin pesan ini ke Claude. Cek juga: buka data.json langsung di alamat situs.</small></div>'};
-document.getElementById('app').textContent='Mengambil data.json…';
-fetch('data.json?'+Date.now()).then(r=>{if(!r.ok)throw new Error('data.json HTTP '+r.status);return r.text()}).then(t=>{D=JSON.parse(t);document.getElementById('up').textContent='Diperbarui '+new Date(D.updated).toLocaleString('id-ID')+' · penilaian = hasil jurnal mesin';draw()}).catch(e=>showErr('Gagal memuat data:',e.message));
-function barAtas(){let b='';if(D.elizAge!=null&&D.elizAge>3)b+=`<div class="card"><b class="kuning">PENGINGAT</b> Postingan @eliz883 terakhir di monitor ${Math.round(D.elizAge)} hari lalu. Lampirkan postingan terbaru di chat Claude.</div>`;const ov=(D.log||[]).filter(l=>lapState(l).c==='biru').length;if(ov)b+=`<div class="card biru"><b>${ov} laporan belum dikirim ke Claude lebih dari 3 hari.</b> Lihat bagian Laporan untuk Claude.</div>`;const g=D.regime;if(g)b+=`<div class="card"><b class="${g.status==='NORMAL'?'ok':g.status==='SELEKTIF'?'kuning':'merah'}">Pasar: ${g.status}</b> ${g.flags.join('; ')||'kondisi normal'}<br><small>BTC ATR14 ${f(g.atrPct,1)}% · range 14 hari ${f(g.range14,1)}% · volume ${f(g.volRatio)}x rata-rata${D.eur?' · EUR/USD '+D.eur.arah+' ('+f(D.eur.d3)+'% 3 hari, informasi saja)':''}</small></div>`;return b}
-function draw(){try{draw0()}catch(e){showErr('Error tampilan:',e.stack||e.message)}}
-function draw0(){const E=D.engines;let h=barAtas()+'<h2>Perbandingan</h2><div class="card w"><table><tr><th>Mesin<th>Sinyal<th>Terisi<th>TP/SL<th>Win (CI95)<th>R/trade<th>PF<th>Minggu<th>Sejak '+'bersama: terisi · R/trade<th>LONG R<th>SHORT R<th>Layak uang nyata?</tr>';
-for(const e of E){const a=e.all;h+=`<tr><td><b>${e.nama}</b><td>${a.sinyal}<td>${a.terisi}<td>${a.tp}/${a.sl}<td>${p(a.win)} ${a.winCI?'('+p(a.winCI[0])+'-'+p(a.winCI[1])+')':''}<td>${f(a.netR)}<td>${f(a.pf)}<td>${a.minggu}<td>${e.sejakBersama.terisi} · ${f(e.sejakBersama.netR)}<td>${f(e.dir.LONG.netR)} (${e.dir.LONG.terisi})<td>${f(e.dir.SHORT.netR)} (${e.dir.SHORT.terisi})<td class="${e.layak?'ok':'merah'}">${e.layak?'LAYAK':'BELUM'}</tr>`}
-h+='</table></div><h2>Syarat uang sungguhan</h2>';for(const e of E)h+=`<div class="card"><b>${e.nama}</b>: `+e.ready.map(x=>`<span class="${x[0]?'ok':'merah'}">${x[0]?'✔':'✖'} ${x[1]}</span>`).join(' · ')+'</div>';
-h+='<h2>Warning yang perlu ditindaklanjuti</h2>';for(const w of D.warnings)h+=`<div class="card"><b class="${w.lvl}">${w.lvl.toUpperCase()}</b> [${w.e}] ${w.t}${w.aksi?'<br><small>Aksi: '+w.aksi+'</small>':''}</div>`;
-h+='<h2>Sinyal menunggu (harga Binance saat ini)</h2><div class="card w"><table><tr><th>Mesin<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Harga<th>Jarak ke entry<th>Tgl<th>Keputusan monitor<th>Catatan</tr>';for(const e of E)for(const r of e.pending)h+=`<tr><td>${e.id}<td>${r.a}<td>${r.d}<td>${r.en}<td>${r.sl}<td>${r.tp}<td>${r.px??'-'}<td>${r.dist==null?'-':f(r.dist)+'%'}<td>${r.w}<td><b>${r.kp||'-'}</b><td>${r.kn||''}</tr>`;
-h+='</table></div><h2>Jurnal analisis</h2>'+E.map((e,i)=>`<button onclick="cur=${i};draw()">${e.id}</button>`).join('');const e=E[cur];if(e){h+='<div class="card w"><table><tr><th>Waktu<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Hasil<th>R<th>Skor<th>Alasan</tr>'+e.jurnal.map(r=>`<tr><td>${r.w}<td>${r.a}<td>${r.d}<td>${r.en}<td>${r.sl}<td>${r.tp}<td class="${r.h}">${r.h}<td>${r.R}<td>${r.sk??''} ${r.gr??''}<td>${r.al||''}</tr>`).join('')+'</table></div>'}
-h+='<h2>@eliz883: kecocokan</h2><div class="card">Postingan terakhir di monitor: '+(D.eliz.lastPost||'-')+'<br>Ticker disebut: '+(D.eliz.tickers.join(', ')||'-')+'<div class="w"><table>'+D.eliz.cocok.map(c=>`<tr><td>$${c.t}<td>`+c.sinyal.map(s=>s.e+': '+(s.n.join('; ')||'tidak ada sinyal')).join(' | ')+'</tr>').join('')+'</table></div><small>Postingan baru: lampirkan (.docx) di chat Claude; Claude memberi data/eliz-posts.json terbaru.</small></div>';
-if(D.audit)h+='<h2>Audit lapisan keputusan</h2><div class="card">'+(D.audit.grup.map(g=>g.g+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)).join(' · ')||'Belum ada sinyal selesai')+'<br><small>'+D.audit.catatan+'</small></div>';if(D.gapDiag)h+='<div class="card"><b>Diagnostik data bolong</b> '+D.gapDiag.gagal.length+'/'+D.gapDiag.cek+' koin top volume: '+(D.gapDiag.gagal.map(x=>x.s).join(', ')||'tidak ada')+'</div>';h+=lapHtml();document.getElementById('app').innerHTML=h}
-const LS={get:k=>{try{return localStorage.getItem(k)}catch{return null}},set:(k,v)=>{try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch{}}},DMS=864e5;
-function lapState(l){const r=LS.get('lap:'+l.id);if(r)return{c:'hijau',r};return{c:Date.now()-new Date(l.t)>=3*DMS?'biru':'',r:null}}
-function lapSave(id){const v=document.getElementById('d'+id).value;if(/^\d{4}-\d{2}-\d{2}$/.test(v)){LS.set('lap:'+id,v);draw()}}
-function lapClear(id){LS.set('lap:'+id,'');draw()}
-function lapCopy(i){navigator.clipboard.writeText(D.log[i].md)}
-function lapHtml(){let h='<h2>Laporan untuk Claude</h2><small>Maksimal 3 kolom. Kolom baru dibuat tiap 3 hari. Biru = belum dilaporkan 3 hari atau lebih; hijau = sudah dilaporkan. Tanggal lapor tersimpan di browser ini.</small><div class="kol">';
- (D.log||[]).forEach((l,i)=>{const s=lapState(l),u=Math.floor((Date.now()-new Date(l.t))/DMS);h+=`<div class="card lap ${s.c}"><b>Kolom ${i+1}</b> · dibuat ${l.t.slice(0,16).replace('T',' ')} UTC (${u} hari lalu)<br><b>${s.c==='hijau'?'Sudah dilaporkan: '+s.r:s.c==='biru'?'BELUM dilaporkan (3 hari atau lebih)':'Belum dilaporkan'}</b><br><button onclick="lapCopy(${i})">Salin laporan</button> <input type="date" id="d${l.id}" value="${s.r||new Date().toISOString().slice(0,10)}"><button onclick="lapSave('${l.id}')">Simpan tanggal lapor</button>${s.r?`<button onclick="lapClear('${l.id}')">Hapus</button>`:''}<textarea readonly>${l.md.replace(/</g,'&lt;')}</textarea></div>`});
+const f=(x,d=2)=>x==null?'-':(+x).toFixed(d),pc=x=>x==null?'-':Math.round(x*100)+'%';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const DMS=864e5;
+const LS={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch{}}};
+let D=null,cur=0,remote={},fbOnline=null,fbMsg='Memuat status penyimpanan…';
+
+// dipanggil oleh modul Firebase (di bawah)
+window.onRemote=(m,ok,msg)=>{remote=m||{};fbOnline=ok;fbMsg=msg||'';if(D)draw()};
+
+fetch('data.json?'+Date.now()).then(r=>{if(!r.ok)throw new Error('data.json HTTP '+r.status);return r.text()})
+ .then(t=>{D=JSON.parse(t);document.getElementById('up').textContent='Diperbarui '+new Date(D.updated).toLocaleString('id-ID')+' · penilaian = hasil jurnal mesin';draw()})
+ .catch(e=>showErr('Gagal memuat data:',e.message));
+
+function showErr(t,m){document.getElementById('app').innerHTML='<div class="card"><b class="merah">'+esc(t)+'</b> '+esc(m)+'<br><small>Salin pesan ini ke Claude.</small></div>'}
+function draw(){if(!D)return;try{document.getElementById('app').innerHTML=html()}catch(e){showErr('Error tampilan:',e.stack||e.message)}}
+
+function lapTanggal(id){return fbOnline===true?(remote[id]||''):(LS.get('lap:'+id)||'')}
+function lapState(l){const r=lapTanggal(l.id);if(r)return{c:'hijau',r};return{c:Date.now()-new Date(l.t)>=3*DMS?'biru':'',r:''}}
+
+function barAtas(){let b='';
+ if(D.elizAge!=null&&D.elizAge>3)b+=`<div class="card"><b class="kuning">PENGINGAT</b> Postingan @eliz883 terakhir di monitor ${Math.round(D.elizAge)} hari lalu. Lampirkan postingan terbaru di chat Claude.</div>`;
+ const biru=(D.log||[]).filter(l=>lapState(l).c==='biru').length;
+ if(biru)b+=`<div class="card biru"><b>${biru} laporan belum dikirim ke Claude lebih dari 3 hari.</b> Lihat bagian Laporan untuk Claude.</div>`;
+ const g=D.regime;
+ if(g)b+=`<div class="card"><b class="${g.status==='NORMAL'?'ok':g.status==='SELEKTIF'?'kuning':'merah'}">Pasar: ${esc(g.status)}</b> ${esc(g.flags.join('; ')||'kondisi normal')}<br><small>BTC ATR14 ${f(g.atrPct,1)}% · range 14 hari ${f(g.range14,1)}% · volume ${f(g.volRatio)}x rata-rata${D.eur?' · EUR/USD '+esc(D.eur.arah)+' ('+f(D.eur.d3)+'% 3 hari, informasi saja)':''}</small></div>`;
+ return b}
+
+function html(){const E=D.engines;let h=barAtas();
+ h+='<h2>Perbandingan</h2><div class="card w"><table><tr><th>Mesin<th>Sinyal<th>Terisi<th>TP/SL<th>Win (CI95)<th>R/trade<th>PF<th>Minggu<th>Sejak bersama: terisi · R/trade<th>LONG R<th>SHORT R<th>Layak uang nyata?</tr>';
+ for(const e of E){const a=e.all;h+=`<tr><td><b>${esc(e.nama)}</b><td>${a.sinyal}<td>${a.terisi}<td>${a.tp}/${a.sl}<td>${pc(a.win)} ${a.winCI?'('+pc(a.winCI[0])+'-'+pc(a.winCI[1])+')':''}<td>${f(a.netR)}<td>${f(a.pf)}<td>${a.minggu}<td>${e.sejakBersama.terisi} · ${f(e.sejakBersama.netR)}<td>${f(e.dir.LONG.netR)} (${e.dir.LONG.terisi})<td>${f(e.dir.SHORT.netR)} (${e.dir.SHORT.terisi})<td class="${e.layak?'ok':'merah'}">${e.layak?'LAYAK':'BELUM'}</tr>`}
+ h+='</table></div><h2>Syarat uang sungguhan</h2>';
+ for(const e of E)h+=`<div class="card"><b>${esc(e.nama)}</b>: `+e.ready.map(x=>`<span class="${x[0]?'ok':'merah'}">${x[0]?'✔':'✖'} ${esc(x[1])}</span>`).join(' · ')+'</div>';
+ h+='<h2>Warning</h2>';
+ for(const w of D.warnings)h+=`<div class="card"><b class="${esc(w.lvl)}">${esc(w.lvl.toUpperCase())}</b> [${esc(w.e)}] ${esc(w.t)}${w.aksi?'<br><small>Aksi: '+esc(w.aksi)+'</small>':''}</div>`;
+ h+='<h2>Sinyal menunggu (harga Binance saat ini)</h2><div class="card w"><table><tr><th>Mesin<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Harga<th>Jarak ke entry<th>Tgl<th>Keputusan monitor<th>Catatan</tr>';
+ for(const e of E)for(const r of e.pending)h+=`<tr><td>${esc(e.id)}<td>${esc(r.a)}<td>${esc(r.d)}<td>${esc(r.en)}<td>${esc(r.sl)}<td>${esc(r.tp)}<td>${esc(r.px??'-')}<td>${r.dist==null?'-':f(r.dist)+'%'}<td>${esc(r.w)}<td><b>${esc(r.kp||'-')}</b><td>${esc(r.kn||'')}</tr>`;
+ h+='</table></div>';
+ h+='<h2>Jurnal analisis</h2>'+E.map((e,i)=>`<button onclick="cur=${i};draw()">${esc(e.id)}</button>`).join('');
+ const e=E[cur];
+ if(e)h+='<div class="card w"><table><tr><th>Waktu<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Hasil<th>R<th>Skor<th>Alasan</tr>'+e.jurnal.map(r=>`<tr><td>${esc(r.w)}<td>${esc(r.a)}<td>${esc(r.d)}<td>${esc(r.en)}<td>${esc(r.sl)}<td>${esc(r.tp)}<td class="${esc(r.h)}">${esc(r.h)}<td>${esc(r.R)}<td>${esc(r.sk??'')} ${esc(r.gr??'')}<td>${esc(r.al||'')}</tr>`).join('')+'</table></div>';
+ if(D.audit)h+='<h2>Audit lapisan keputusan</h2><div class="card">'+(D.audit.grup.map(g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)).join(' · ')||'Belum ada sinyal selesai')+'<br><small>'+esc(D.audit.catatan)+'</small></div>';
+ if(D.gapDiag)h+='<h2>Diagnostik data bolong</h2><div class="card">'+D.gapDiag.gagal.length+'/'+D.gapDiag.cek+' koin top volume: '+esc(D.gapDiag.gagal.map(x=>x.s).join(', ')||'tidak ada')+'</div>';
+ h+='<h2>@eliz883: kecocokan</h2><div class="card">Postingan terakhir di monitor: '+esc(D.eliz.lastPost||'-')+'<br>Ticker disebut: '+esc(D.eliz.tickers.join(', ')||'-')+'<div class="w"><table>'+D.eliz.cocok.map(c=>`<tr><td>$${esc(c.t)}<td>`+c.sinyal.map(s=>esc(s.e)+': '+esc(s.n.join('; ')||'tidak ada sinyal')).join(' | ')+'</tr>').join('')+'</table></div><small>Postingan baru: lampirkan (.docx) di chat Claude; Claude memberi data/eliz-posts.json terbaru.</small></div>';
+ return h+lapHtml()}
+
+function lapHtml(){
+ let h='<h2>Laporan untuk Claude</h2><div class="card"><small>Status penyimpanan: '+esc(fbMsg)+'</small></div><small>Maksimal 3 kolom. Kolom baru dibuat tiap 3 hari. Biru = belum dilaporkan 3 hari atau lebih; hijau = sudah dilaporkan.</small><div class="kol">';
+ (D.log||[]).forEach((l,i)=>{const s=lapState(l),u=Math.floor((Date.now()-new Date(l.t))/DMS);
+  h+=`<div class="card ${s.c}"><b>Kolom ${i+1}</b> · dibuat ${esc(l.t.slice(0,16).replace('T',' '))} UTC (${u} hari lalu)<br><b>${s.c==='hijau'?'Sudah dilaporkan: '+esc(s.r):s.c==='biru'?'BELUM dilaporkan (3 hari atau lebih)':'Belum dilaporkan'}</b><br><button onclick="lapCopy(${i})">Salin laporan</button> <input type="date" id="d${esc(l.id)}" value="${esc(s.r||new Date().toISOString().slice(0,10))}"><button onclick="lapSave('${esc(l.id)}')">Simpan tanggal lapor</button>${s.r?`<button onclick="lapClear('${esc(l.id)}')">Hapus</button>`:''}<textarea readonly>${esc(l.md)}</textarea></div>`});
  return h+'</div><button onclick="navigator.clipboard.writeText(D.laporan)">Salin laporan terkini (live)</button>'}
-</script></body></html>
+
+function lapCopy(i){navigator.clipboard.writeText(D.log[i].md)}
+function lapSave(id){const v=document.getElementById('d'+id).value;if(/^\d{4}-\d{2}-\d{2}$/.test(v))writeTgl(id,v)}
+function lapClear(id){writeTgl(id,'')}
+async function writeTgl(id,v){
+ LS.set('lap:'+id,v); // cadangan lokal selalu ditulis
+ if(window.LapDB){
+  try{await window.LapDB.set(id,v);remote[id]=v;fbOnline=true;fbMsg='Tersimpan ke Firebase.'}
+  catch(e){fbOnline=false;fbMsg='Gagal simpan ke Firebase ('+(e.code||e.message)+'). Tersimpan lokal saja.'}
+ }
+ draw()}
+</script>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
+import {getFirestore,doc,setDoc,collection,onSnapshot,serverTimestamp} from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+const FIREBASE_CONFIG={apiKey:"AIzaSyAKFgWdeXzNkeAqZn40ylzWB6oF3cML5EY",authDomain:"monitortn.firebaseapp.com",projectId:"monitortn",storageBucket:"monitortn.firebasestorage.app",messagingSenderId:"767147872981",appId:"1:767147872981:web:ed61d90e2f9fab7108c85c"};
+try{
+ const db=getFirestore(initializeApp(FIREBASE_CONFIG));
+ onSnapshot(collection(db,'laporan'),
+  s=>{const m={};s.forEach(x=>{m[x.id]=x.data().tanggal||''});window.onRemote(m,true,'Tersambung ke Firebase (realtime).')},
+  e=>window.onRemote({},false,'Firebase tidak bisa dibaca ('+(e.code||e.message)+'). Memakai penyimpanan lokal browser.'));
+ window.LapDB={set:(id,v)=>setDoc(doc(db,'laporan',id),{tanggal:v,diperbarui:serverTimestamp()})};
+}catch(e){window.onRemote({},false,'Firebase gagal dimuat ('+e.message+'). Memakai penyimpanan lokal browser.')}
+</script>
+</body></html>
