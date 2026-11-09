@@ -9,3 +9,5 @@ Pembaruan v2: scripts/overlay.mjs (kondisi pasar, EUR/USD info, konfirmasi 4H/12
 v2.2: kolom Laporan untuk Claude (maks 3, snapshot tiap 3 hari, status biru/hijau, input tanggal lapor di browser).
 
 v4: lapisan uji ala Van Tharp (SQN, biaya impas dan sensitivitas biaya, distribusi R, konsentrasi trade teratas).
+
+v4.1: tabel Jurnal analisis kini punya kolom "Tgl hasil (UTC)" (kapan TP/SL tercapai, dari field `tx` jurnal mesin). Kolom "Waktu" diganti nama menjadi "Waktu analisis". Fitur lain tidak berubah.
