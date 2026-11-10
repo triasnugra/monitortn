@@ -10,4 +10,4 @@ v2.2: kolom Laporan untuk Claude (maks 3, snapshot tiap 3 hari, status biru/hija
 
 v4: lapisan uji ala Van Tharp (SQN, biaya impas dan sensitivitas biaya, distribusi R, konsentrasi trade teratas).
 
-v4.1: tabel Jurnal analisis kini punya kolom "Tgl hasil (UTC)" (kapan TP/SL tercapai, dari field `tx` jurnal mesin). Kolom "Waktu" diganti nama menjadi "Waktu analisis". Fitur lain tidak berubah.
+v5: kolom laporan harian (per tanggal WIB, tampil 3 hari, maks 3 harian + 1 live).
