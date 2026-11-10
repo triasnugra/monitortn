@@ -31,11 +31,15 @@ function showErr(t,m){document.getElementById('app').innerHTML='<div class="card
 function draw(){if(!D)return;try{document.getElementById('app').innerHTML=html()}catch(e){showErr('Error tampilan:',e.stack||e.message)}}
 
 function lapTanggal(id){return fbOnline===true?(remote[id]||''):(LS.get('lap:'+id)||'')}
-function lapState(l){const r=lapTanggal(l.id);if(r)return{c:'hijau',r};return{c:Date.now()-new Date(l.t)>=3*DMS?'biru':'',r:''}}
+const wibHari=()=>new Date(Date.now()+7*36e5).toISOString().slice(0,10);
+const selisih=d=>Math.round((Date.parse(wibHari())-Date.parse(d))/DMS);
+let LK=[];
+function lapKolom(){return (D.log||[]).filter(l=>{const k=selisih(l.d);return k>=1&&k<=3}).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0)}
+function lapState(l){const r=lapTanggal(l.id);if(r)return{c:'hijau',r};return{c:l.d&&selisih(l.d)>=3?'biru':'',r:''}}
 
 function barAtas(){let b='';
  if(D.elizAge!=null&&D.elizAge>3)b+=`<div class="card"><b class="kuning">PENGINGAT</b> Postingan @eliz883 terakhir di monitor ${Math.round(D.elizAge)} hari lalu. Lampirkan postingan terbaru di chat Claude.</div>`;
- const biru=(D.log||[]).filter(l=>lapState(l).c==='biru').length;
+ const biru=lapKolom().filter(l=>lapState(l).c==='biru').length;
  if(biru)b+=`<div class="card biru"><b>${biru} laporan belum dikirim ke Claude lebih dari 3 hari.</b> Lihat bagian Laporan untuk Claude.</div>`;
  const g=D.regime;
  if(g)b+=`<div class="card"><b class="${g.status==='NORMAL'?'ok':g.status==='SELEKTIF'?'kuning':'merah'}">Pasar: ${esc(g.status)}</b> ${esc(g.flags.join('; ')||'kondisi normal')}<br><small>BTC ATR14 ${f(g.atrPct,1)}% · range 14 hari ${f(g.range14,1)}% · volume altcoin ${f(g.volRatio)}x (median 7/60 hari) · BTC ${f(g.btcVr)}x${D.eur?' · EUR/USD '+esc(D.eur.arah)+' ('+f(D.eur.d3)+'% 3 hari, informasi saja)':''}</small></div>`;
@@ -53,7 +57,7 @@ function html(){const E=D.engines;let h=barAtas();
  h+='</table></div>';
  h+='<h2>Jurnal analisis</h2>'+E.map((e,i)=>`<button onclick="cur=${i};draw()">${esc(e.id)}</button>`).join('');
  const e=E[cur];
- if(e)h+='<div class="card w"><table><tr><th>Waktu analisis<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Hasil<th>Tgl hasil (UTC)<th>R<th>Skor<th>Alasan</tr>'+e.jurnal.map(r=>`<tr><td>${esc(r.w)}<td>${esc(r.a)}<td>${esc(r.d)}<td>${esc(r.en)}<td>${esc(r.sl)}<td>${esc(r.tp)}<td class="${esc(r.h)}">${esc(r.h)}<td>${esc(r.x||'-')}<td>${esc(r.R)}<td>${esc(r.sk??'')} ${esc(r.gr??'')}<td>${esc(r.al||'')}</tr>`).join('')+'</table><small>Tgl hasil = kapan TP/SL tercapai (jam candle, UTC). Untuk kedaluwarsa/tidak terisi = batas waktu order. "-" = belum selesai atau jurnal lama tanpa data waktu hasil.</small></div>';
+ if(e)h+='<div class="card w"><table><tr><th>Waktu<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Hasil<th>R<th>Skor<th>Alasan</tr>'+e.jurnal.map(r=>`<tr><td>${esc(r.w)}<td>${esc(r.a)}<td>${esc(r.d)}<td>${esc(r.en)}<td>${esc(r.sl)}<td>${esc(r.tp)}<td class="${esc(r.h)}">${esc(r.h)}<td>${esc(r.R)}<td>${esc(r.sk??'')} ${esc(r.gr??'')}<td>${esc(r.al||'')}</tr>`).join('')+'</table></div>';
  if(D.audit)h+='<h2>Audit lapisan keputusan</h2><div class="card">'+(D.audit.grup.map(g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)).join(' · ')||'Belum ada sinyal selesai')+'<br><small>'+esc(D.audit.catatan)+'</small></div>';
  if(D.gapDiag)h+='<h2>Diagnostik data bolong</h2><div class="card">'+D.gapDiag.gagal.length+'/'+D.gapDiag.cek+' koin top volume: '+esc(D.gapDiag.gagal.map(x=>x.s).join(', ')||'tidak ada')+'</div>';
  if(D.ujiHarian)h+='<h2>Uji batas harian (hipotesis)</h2><div class="card">Batas uji: '+D.ujiHarian.cap+' sinyal/hari. Hari ini: '+D.ujiHarian.hariIni+' sinyal, '+D.ujiHarian.lewatHariIni+' melewati batas.<br>'+(D.ujiHarian.grup||[]).map(g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)).join(' · ')+'<br><small>Dibaca hanya setelah tiap grup >= 30 trade.</small></div>';
@@ -68,13 +72,14 @@ function tharpHtml(){
  h+='</table></div><div class="card w"><b>Distribusi R (jumlah trade per rentang)</b><table><tr><th>Mesin'+((D.engines.find(e=>e.tharp&&e.tharp.ok)||{tharp:{dist:[]}}).tharp.dist||[]).map(d=>'<th>'+esc(d.l)).join('')+'</tr>';
  for(const e of D.engines)if(e.tharp&&e.tharp.ok)h+='<tr><td>'+esc(e.id)+e.tharp.dist.map(d=>'<td>'+d.n).join('')+'</tr>';
  return h+'</table><small>SQN = akar(N) × rata-rata R ÷ simpangan baku R. Jangan ditafsirkan sebelum N ≥ 30. SQN100 membatasi N pada 100. Biaya impas = biaya pulang-pergi (%) yang membuat R/trade jadi nol.</small></div>'}
-function lapHtml(){
- let h='<h2>Laporan untuk Claude</h2><div class="card"><small>Status penyimpanan: '+esc(fbMsg)+'</small></div><small>Maksimal 3 kolom. Kolom baru dibuat tiap 3 hari. Biru = belum dilaporkan 3 hari atau lebih; hijau = sudah dilaporkan.</small><div class="kol">';
- (D.log||[]).forEach((l,i)=>{const s=lapState(l),u=Math.floor((Date.now()-new Date(l.t))/DMS);
-  h+=`<div class="card ${s.c}"><b>Kolom ${i+1}</b> · dibuat ${esc(l.t.slice(0,16).replace('T',' '))} UTC (${u} hari lalu)<br><b>${s.c==='hijau'?'Sudah dilaporkan: '+esc(s.r):s.c==='biru'?'BELUM dilaporkan (3 hari atau lebih)':'Belum dilaporkan'}</b><br><button onclick="lapCopy(${i})">Salin laporan</button> <input type="date" id="d${esc(l.id)}" value="${esc(s.r||new Date().toISOString().slice(0,10))}"><button onclick="lapSave('${esc(l.id)}')">Simpan tanggal lapor</button>${s.r?`<button onclick="lapClear('${esc(l.id)}')">Hapus</button>`:''}<textarea readonly>${esc(l.md)}</textarea></div>`});
- return h+'</div><button onclick="navigator.clipboard.writeText(D.laporan)">Salin laporan terkini (live)</button>'}
-
-function lapCopy(i){navigator.clipboard.writeText(D.log[i].md)}
+function lapKartu(l,judul,info,salin,live){const s=lapState(l),id=esc(l.id);
+ return `<div class="card ${s.c}"><b>${judul}</b><br><small>${info}</small><br><b>${s.c==='hijau'?'Sudah dilaporkan: '+esc(s.r):s.c==='biru'?'BELUM dilaporkan; hari terakhir tampil':'Belum dilaporkan'}</b><br><button onclick="lapCopy(${salin})">Salin laporan</button> <input type="date" id="d${id}" value="${esc(s.r||new Date().toISOString().slice(0,10))}"><button onclick="lapSave('${id}')">Simpan tanggal lapor</button>${s.r?`<button onclick="lapClear('${id}')">Hapus</button>`:''}<textarea readonly>${esc(live?D.laporan:l.md)}</textarea></div>`}
+function lapHtml(){LK=lapKolom();
+ let h='<h2>Laporan untuk Claude</h2><div class="card"><small>Status penyimpanan: '+esc(fbMsg)+'</small></div><small>Maksimal 4 kolom: sampai 3 laporan harian (per tanggal WIB, tampil 3 hari lalu hilang otomatis) + 1 laporan live. Biru = belum dilaporkan sampai hari terakhir tampil; hijau = sudah dilaporkan.</small><div class="kol">';
+ LK.forEach((l,i)=>{h+=lapKartu(l,'Kolom '+(i+1)+' · laporan '+esc(l.d),'Terakhir diperbarui '+esc(l.t.slice(0,16).replace('T',' '))+' UTC · tampil sisa '+(4-selisih(l.d))+' hari',i,false)});
+ h+=lapKartu({id:D.hariId,d:D.hariIni,md:''},'Kolom '+(LK.length+1)+' · LIVE ('+esc(D.hariIni||'')+')','Diperbarui '+esc(D.updated.slice(0,16).replace('T',' '))+' UTC; menjadi laporan harian mulai besok',"'live'",true);
+ return h+'</div>'}
+function lapCopy(i){navigator.clipboard.writeText(i==='live'?D.laporan:LK[i].md)}
 function lapSave(id){const v=document.getElementById('d'+id).value;if(/^\d{4}-\d{2}-\d{2}$/.test(v))writeTgl(id,v)}
 function lapClear(id){writeTgl(id,'')}
 async function writeTgl(id,v){
