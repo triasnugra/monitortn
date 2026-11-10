@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import {overlay} from './overlay.mjs';
 const C=JSON.parse(fs.readFileSync('config.json','utf8')),LOCAL=process.env.LOCAL_DIR,TOK=process.env.MONITOR_TOKEN;
-const now=Date.now(),DAY=864e5,fin=r=>['TP','SL','kedaluwarsa'].includes(r.hasil);
+const now=process.env.FAKE_NOW?Date.parse(process.env.FAKE_NOW):Date.now(),DAY=864e5,fin=r=>['TP','SL','kedaluwarsa'].includes(r.hasil);
 async function getJ(e){
  if(LOCAL)return JSON.parse(fs.readFileSync(`${LOCAL}/${e.repo}-main/data/journal.json`,'utf8'));
  const r=await fetch(`https://raw.githubusercontent.com/${C.owner}/${e.repo}/main/data/journal.json`,{headers:TOK?{Authorization:'token '+TOK}:{}});
@@ -15,7 +15,7 @@ function stats(rows){const f=rows.filter(fin),tp=f.filter(r=>r.hasil==='TP').len
  let ci=null;if(Wk.size>=12){const g={};f.forEach(r=>(g[wk(r)]??=[]).push(net(r)));const v=Object.values(g),b=[];for(let i=0;i<2000;i++){let s=0,c=0;for(let j=0;j<v.length;j++){const x=v[Math.floor(Math.random()*v.length)];s+=sum(x);c+=x.length}b.push(s/c)}b.sort((a,c)=>a-c);ci=[b[50],b[1950]]}
  return{sinyal:rows.length,terisi:f.length,tp,sl,exp:f.length-tp-sl,tdkIsi:rows.filter(r=>r.hasil==='tidak terisi').length,menunggu:rows.filter(r=>r.hasil==='menunggu').length,
   win:tp+sl?tp/(tp+sl):null,winCI:wil(tp,tp+sl),netR:f.length?sum(n)/f.length:null,totalR:sum(n),pf:gl?gp/gl:null,minggu:Wk.size,hari:days.size,sinyalPerHari:days.size?rows.length/days.size:0,ci}}
-const out={updated:new Date().toISOString(),cfg:{minTrades:C.minTrades,minWeeks:C.minWeeks},engines:[],warnings:[]};
+const out={updated:new Date(now).toISOString(),cfg:{minTrades:C.minTrades,minWeeks:C.minWeeks},engines:[],warnings:[]};
 const W=(lvl,e,t,aksi)=>out.warnings.push({lvl,e,t,aksi});
 const RES={};const ALL=[];const px={};async function price(a){if(a in px)return px[a];try{const r=await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${a}USDT`,{signal:AbortSignal.timeout(8000)});px[a]=r.ok?+(await r.json()).price:null}catch{px[a]=null}return px[a]}
 for(const e of C.engines){
@@ -31,7 +31,7 @@ for(const r of all)RES[e.id+'|'+r.aset+'|'+r.waktu.slice(0,10)+'|'+r.arah]={h:r.
  const ready=[[st.terisi>=C.minTrades,`Trade terisi ${st.terisi}/${C.minTrades}`],[st.minggu>=C.minWeeks,`Minggu ${st.minggu}/${C.minWeeks}`],[!!st.ci&&st.ci[0]>0,'CI95 bawah R/trade > 0'],[st.pf>=1.2,'Profit factor >= 1,2']];
  if(th.ok&&th.n>=30){if(th.be<0.3)W('kuning',e.id,`Edge tipis terhadap biaya: biaya impas ${th.be.toFixed(2)}% (asumsi ${C.costPct}%). Selisih biaya/slippage kecil dapat menghapus profit`,'Uji biaya nyata di Binance (fee tier, slippage) sebelum uang sungguhan');if(th.top3!=null&&th.top3>0.5)W('kuning',e.id,`Hasil terkonsentrasi: 3 trade teratas = ${(th.top3*100).toFixed(0)}% dari total untung`,'Tanpa 3 trade itu R/trade = '+(th.meanEx3==null?'-':th.meanEx3.toFixed(2)))}
  out.engines.push({id:e.id,nama:e.nama,start:e.start,tharp:th,all:st,sejakBersama:sc,tujuhHari:s7,dir,ready,layak:ready.every(x=>x[0]),
-  jurnal:all.slice(-120).reverse().map(r=>({w:r.waktu.slice(0,16),a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,h:r.hasil,R:r.R,x:(typeof r.tx==='number'&&r.hasil!=='menunggu')?new Date(r.tx).toISOString().slice(0,16).replace('T',' '):null,al:r.alasan,sk:r.score??null,gr:r.grade??null})),
+  jurnal:all.slice(-120).reverse().map(r=>({w:r.waktu.slice(0,16),a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,h:r.hasil,R:r.R,al:r.alasan,sk:r.score??null,gr:r.grade??null})),
   pending:pend.map(r=>({a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,px:r.px,dist:r.dist,w:r.waktu.slice(0,10),rk:r.rk}))});
  const lastAny=J.at(-1),age=(now-new Date(lastAny.waktu.replace(' UTC','Z').replace(' ','T')))/36e5;
  if(age>36)W('merah',e.id,`Jurnal terakhir ${age.toFixed(0)} jam lalu: workflow jurnal mungkin mati`,'Cek Actions di repo mesin');
@@ -78,6 +78,16 @@ md+=`\n## Postingan terbaru @eliz883 (tickers: ${out.eliz.tickers.join(', ')||'-
 md+=OV+tharpMd(out);md+=`\n## Permintaan\nEvaluasi laporan ini, cocokkan dengan postingan @eliz883 di atas, lalu buatkan full coding perbaikan (zip utuh siap commit lewat GitHub web UI). Prinsip: jangan ubah core.mjs/trade-sim.mjs selama forward test tanpa memulai protokol baru; jujur soal sampel kecil dan rezim pasar. Unggah zip repo mesin terbaru bila perlu diverifikasi.\n`;
 out.laporan=md;
 let LG=[];if(!LOCAL){const r=await fetch(`https://${C.owner}.github.io/monitortn/laporan-log.json`);if(r.ok)LG=await r.json();else if(r.status!==404)throw new Error('laporan-log.json HTTP '+r.status+': build dihentikan agar riwayat tidak hilang')}
-if(!LG.length||now-new Date(LG.at(-1).t).getTime()>=3*DAY)LG.push({id:out.updated.slice(0,16).replace(/[-:T]/g,''),t:out.updated,md});
-LG=LG.slice(-3);out.log=LG;fs.mkdirSync('site',{recursive:true});fs.writeFileSync('site/laporan-log.json',JSON.stringify(LG));
+if(process.env.LOG_IN)LG=JSON.parse(fs.readFileSync(process.env.LOG_IN,'utf8'));
+// Satu laporan per tanggal (WIB). Laporan hari ini terus diperbarui; mulai besok ia membeku dan tampil 3 hari.
+const wibD=iso=>new Date(new Date(iso).getTime()+7*36e5).toISOString().slice(0,10);
+const hari=wibD(out.updated);
+LG=LG.map(x=>x.d?x:{...x,d:wibD(x.t)});
+let cur=LG.find(x=>x.d===hari);
+if(cur){cur.t=out.updated;cur.md=md}else{cur={id:hari.replace(/-/g,'')+'0000',d:hari,t:out.updated,md};LG.push(cur)}
+out.hariIni=hari;out.hariId=cur.id;
+const batas=new Date(Date.parse(hari)-4*864e5).toISOString().slice(0,10);
+LG=LG.filter(x=>x.d>=batas).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);
+out.log=LG.map(x=>x.d===hari?{...x,md:''}:x);
+fs.mkdirSync('site',{recursive:true});fs.writeFileSync('site/laporan-log.json',JSON.stringify(LG));
 fs.mkdirSync('site',{recursive:true});fs.copyFileSync('index.html','site/index.html');fs.writeFileSync('site/data.json',JSON.stringify(out));fs.writeFileSync('site/laporan.md',md);console.log('OK',out.engines.length,'mesin,',out.warnings.length,'warning')
