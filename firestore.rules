@@ -1,16 +1,30 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Koleksi tanggal lapor. Baca publik; tulis hanya format tanggal valid (atau kosong = dibatalkan).
+
+    // Tanggal lapor ke Claude. ID dokumen = ID kolom laporan (12 sampai 14 digit angka).
     match /laporan/{id} {
+
+      // Siapa pun boleh membaca (situs monitor bersifat publik).
       allow read: if true;
-      allow create, update: if request.resource.data.keys().hasOnly(['tanggal','diperbarui'])
+
+      // Tulis hanya jika:
+      // - dokumen hanya berisi field "tanggal" dan "diperbarui"
+      // - "tanggal" berformat YYYY-MM-DD, atau kosong (artinya dibatalkan)
+      // - "diperbarui" diisi waktu server (bukan angka bebas)
+      // - ID dokumen berupa 12 sampai 14 digit angka
+      allow create, update: if request.resource.data.keys().hasOnly(['tanggal', 'diperbarui'])
         && request.resource.data.tanggal is string
         && request.resource.data.tanggal.matches('^([0-9]{4}-[0-9]{2}-[0-9]{2})?$')
         && request.resource.data.diperbarui == request.time
         && id.matches('^[0-9]{12,14}$');
+
+      // Dokumen tidak bisa dihapus dari situs.
       allow delete: if false;
     }
+
+    // Semua koleksi lain: ditolak total.
     match /{document=**} {
       allow read, write: if false;
     }
