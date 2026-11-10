@@ -17,14 +17,15 @@ function stats(rows){const f=rows.filter(fin),tp=f.filter(r=>r.hasil==='TP').len
   win:tp+sl?tp/(tp+sl):null,winCI:wil(tp,tp+sl),netR:f.length?sum(n)/f.length:null,totalR:sum(n),pf:gl?gp/gl:null,minggu:Wk.size,hari:days.size,sinyalPerHari:days.size?rows.length/days.size:0,ci}}
 const out={updated:new Date(now).toISOString(),cfg:{minTrades:C.minTrades,minWeeks:C.minWeeks},engines:[],warnings:[]};
 const W=(lvl,e,t,aksi)=>out.warnings.push({lvl,e,t,aksi});
-const RES={};const ALL=[];const px={};async function price(a){if(a in px)return px[a];try{const r=await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${a}USDT`,{signal:AbortSignal.timeout(8000)});px[a]=r.ok?+(await r.json()).price:null}catch{px[a]=null}return px[a]}
+const RES={};const ENG={};const ALL=[];const px={};async function price(a){if(a in px)return px[a];try{const r=await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${a}USDT`,{signal:AbortSignal.timeout(8000)});px[a]=r.ok?+(await r.json()).price:null}catch{px[a]=null}return px[a]}
 for(const e of C.engines){
  let J;try{J=await getJ(e)}catch(x){W('merah',e.id,'Jurnal tidak terbaca: '+x.message,'Periksa nama repo di config.json atau secret MONITOR_TOKEN');continue}
  const all=J.filter(r=>r.agen===e.agen&&r.waktu>=e.start),com=all.filter(r=>r.waktu>=C.commonStart),last=all.at(-1);
  if(!last){W('merah',e.id,'Tidak ada baris jurnal untuk agen '+e.agen,'Periksa config.json');continue}
  const dd={};[...all].sort((a,b)=>a.waktu<b.waktu?-1:a.waktu>b.waktu?1:0).forEach(r=>{const d=r.waktu.slice(0,10);dd[d]=(dd[d]||0)+1;r.rk=dd[d]});
 for(const r of all)ALL.push({e:e.id,w:r.waktu,d:r.waktu.slice(0,10),a:r.aset,arah:r.arah,h:r.hasil,R:fin(r)?net(r):null,rk:r.rk});
-for(const r of all)RES[e.id+'|'+r.aset+'|'+r.waktu.slice(0,10)+'|'+r.arah]={h:r.hasil,R:fin(r)?net(r):null};const dir={};for(const s of['LONG','SHORT'])dir[s]=stats(all.filter(r=>r.arah===s));
+for(const r of all)RES[e.id+'|'+r.aset+'|'+r.waktu.slice(0,10)+'|'+r.arah]={h:r.hasil,R:fin(r)?net(r):null};ENG[e.id]=all;
+const dir={};for(const s of['LONG','SHORT'])dir[s]=stats(all.filter(r=>r.arah===s));
  const th=tharp(all.filter(fin)),st=stats(all),sc=stats(com),s7=stats(all.filter(r=>r.waktu>=new Date(now-7*DAY).toISOString().slice(0,10)));
  const pend=(()=>{const s=new Set();return all.filter(r=>r.hasil==='menunggu').reverse().filter(r=>{const k=r.aset+'|'+r.arah+'|'+r.entry;if(s.has(k))return false;s.add(k);return true}).reverse()})();
  const dupN=all.filter(r=>r.hasil==='menunggu').length-pend.length;if(dupN>0)W('info',e.id,dupN+' sinyal menunggu duplikat (koin, arah, entry sama dengan analisis lebih baru) disembunyikan',null);for(const r of pend){const p=await price(r.aset);r.px=p;r.dist=p?(p-+r.entry)/+r.entry*100:null}
@@ -79,10 +80,23 @@ md+=OV+tharpMd(out);md+=`\n## Permintaan\nEvaluasi laporan ini, cocokkan dengan 
 out.laporan=md;
 let LG=[];if(!LOCAL){const r=await fetch(`https://${C.owner}.github.io/monitortn/laporan-log.json`);if(r.ok)LG=await r.json();else if(r.status!==404)throw new Error('laporan-log.json HTTP '+r.status+': build dihentikan agar riwayat tidak hilang')}
 if(process.env.LOG_IN)LG=JSON.parse(fs.readFileSync(process.env.LOG_IN,'utf8'));
+// Rekonstruksi laporan untuk tanggal yang terlewat (hanya 3 hari terakhir). BUKAN snapshot asli: dihitung ulang dari jurnal per akhir hari (WIB).
+function recon(d){const cut=Date.parse(d)+864e5-7*36e5-1,ts=r=>Date.parse(r.waktu.replace(' UTC','Z').replace(' ','T'));
+ let m=`# Laporan REKONSTRUKSI tanggal ${d} (dibuat ${out.updated.slice(0,10)}; BUKAN snapshot asli)\n\nDihitung ulang dari jurnal mesin dengan hanya memakai data sampai akhir ${d} (WIB). Hasil trade yang baru selesai setelah itu dianggap belum selesai. TIDAK mencakup kondisi pasar, keputusan monitor, dan harga pada hari itu.\n\n## Kinerja (biaya ${C.costPct}% pulang-pergi)\n| Mesin | Sinyal | Terisi | TP/SL | Win | R/trade | PF |\n|---|---|---|---|---|---|---|\n`;
+ const T={engines:[]},D2=[];
+ for(const [id,all] of Object.entries(ENG)){const rows=all.filter(r=>ts(r)<=cut).map(r=>r.tx&&r.tx>cut&&r.hasil!=='menunggu'?{...r,hasil:'menunggu'}:r);
+  const st=stats(rows),th=tharp(rows.filter(fin)),dl=stats(rows.filter(r=>r.arah==='LONG')),ds=stats(rows.filter(r=>r.arah==='SHORT'));
+  m+=`| ${id} | ${st.sinyal} | ${st.terisi} | ${st.tp}/${st.sl} | ${pc(st.win)} | ${f(st.netR)} | ${f(st.pf)} |\n`;
+  D2.push(`- ${id}: LONG n=${dl.terisi} R/trade ${f(dl.netR)}; SHORT n=${ds.terisi} R/trade ${f(ds.netR)}`);T.engines.push({id,tharp:th})}
+ m+=`\n## LONG vs SHORT\n${D2.join('\n')}\n`+tharpMd(T);
+ const P=EZ.filter(p=>p.tgl.slice(0,10)<=d).slice(-5).reverse();
+ m+=`\n## Postingan @eliz883 sampai ${d}\n${P.map(p=>`- ${p.tgl}: ${p.teks.slice(0,400)}`).join('\n')||'- tidak ada'}\n`;
+ return m+`\n## Permintaan\nEvaluasi laporan rekonstruksi ini seperti laporan biasa, dengan catatan bahwa ia dihitung ulang dari jurnal, bukan snapshot asli.\n`}
 // Satu laporan per tanggal (WIB). Laporan hari ini terus diperbarui; mulai besok ia membeku dan tampil 3 hari.
 const wibD=iso=>new Date(new Date(iso).getTime()+7*36e5).toISOString().slice(0,10);
 const hari=wibD(out.updated);
 LG=LG.map(x=>x.d?x:{...x,d:wibD(x.t)});
+for(const k of [3,2,1]){const d=new Date(Date.parse(hari)-k*864e5).toISOString().slice(0,10);if(!LG.some(x=>x.d===d))LG.push({id:d.replace(/-/g,'')+'0000',d,t:out.updated,md:recon(d),rekon:true})}
 let cur=LG.find(x=>x.d===hari);
 if(cur){cur.t=out.updated;cur.md=md}else{cur={id:hari.replace(/-/g,'')+'0000',d:hari,t:out.updated,md};LG.push(cur)}
 out.hariIni=hari;out.hariId=cur.id;
