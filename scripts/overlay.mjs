@@ -16,6 +16,17 @@ async function breadth(){
  for(let i=0;i<t.length;i+=6)await Promise.all(t.slice(i,i+6).map(async x=>{try{const k=(await kl(x.symbol,'1d',67)).slice(0,-1),qv=k.map(q=>q.v*q.c),base=med(qv.slice(0,-7)),last7=qv.slice(-7).reduce((a,b)=>a+b,0)/7;if(base>0)rs.push(last7/base)}catch{}}));
  return{n:rs.length,med:rs.length>=TH.minKoin?med(rs):null}}
 
+// Rekonstruksi rasio volume harian ke belakang (21 hari) agar uji vs @eliz883 langsung terukur.
+// Memakai 30 koin teratas SAAT INI (bias penyintas kecil); baris ditandai bf:true. Rumus sama dengan breadth().
+async function volBackfill(days=21){
+ const t=(await bj('ticker/24hr')).filter(x=>x.symbol.endsWith('USDT')&&!STABLE.has(x.symbol.slice(0,-4))).sort((a,b)=>b.quoteVolume-a.quoteVolume).slice(0,30),S=[];
+ for(let i=0;i<t.length;i+=6)await Promise.all(t.slice(i,i+6).map(async x=>{try{S.push(await kl(x.symbol,'1d',100))}catch{}}));
+ const res=[],t0=Date.parse(new Date().toISOString().slice(0,10));
+ for(let b=1;b<=days;b++){const D=t0-b*DAY,rs=[];
+  for(const k of S){const c=k.filter(q=>q.t<D).slice(-66);if(c.length<66)continue;const qv=c.map(q=>q.v*q.c),base=med(qv.slice(0,-7)),l7=qv.slice(-7).reduce((a,x)=>a+x,0)/7;if(base>0)rs.push(l7/base)}
+  if(rs.length>=TH.minKoin)res.push({d:new Date(D).toISOString().slice(0,10),vr:med(rs)})}
+ return res}
+
 async function regime(){
  const k=(await kl('BTCUSDT','1d',70)).slice(0,-1),c=k.map(q=>q.c),n=k.length,px=c[n-1];
  const e20=ema(c,20)[n-1],e50=ema(c,50)[n-1];
@@ -59,14 +70,20 @@ export async function overlay(out,C,RES,ALL){
  let hist=[];
  if(!process.env.LOCAL_DIR){const r=await fetch(`https://${C.owner}.github.io/monitortn/regime-history.json`);if(r.ok)hist=await r.json();else if(r.status!==404)throw new Error('regime-history.json HTTP '+r.status+': build dihentikan agar riwayat tidak hilang')}
  if(reg)hist=hist.filter(h=>h.d!==today).concat({d:today,status:reg.status,vr:reg.volRatio,flags:reg.flags.length,t:new Date().toISOString()}).slice(-400);
+ {const have=new Set(hist.map(h=>h.d)),miss=[...Array(21)].map((_,i)=>new Date(Date.now()-(i+1)*DAY).toISOString().slice(0,10)).filter(d=>!have.has(d));
+  if(miss.length)try{for(const x of await volBackfill())if(!have.has(x.d))hist.push({d:x.d,status:null,vr:x.vr,flags:null,bf:true,t:new Date().toISOString()});hist=hist.sort((a,b)=>a.d<b.d?-1:1).slice(-400)}catch(x){out.warnings.push({lvl:'kuning',e:'monitor',t:'Rekonstruksi volume harian gagal: '+x.message,aksi:null})}}
  fs.mkdirSync('site',{recursive:true});fs.writeFileSync('site/regime-history.json',JSON.stringify(hist));
 
  // uji volume vs @eliz883
  let EZ=[];try{EZ=JSON.parse(fs.readFileSync('data/eliz-posts.json','utf8'))}catch{}
  const byDay=Object.fromEntries(hist.map(h=>[h.d,h]));
- const vrPosts=EZ.filter(p=>tagEliz(p.teks).includes('volume_rendah')).map(p=>p.tgl.slice(0,10));
- const terukur=vrPosts.filter(d=>byDay[d]&&byDay[d].vr!=null).map(d=>({d,flag:byDay[d].vr<TH.volRendah}));
- out.ujiEliz={postVolumeRendah:vrPosts.length,hariTerukur:terukur.length,cocok:terukur.filter(x=>x.flag).length,catatan:'Hanya dihitung untuk hari yang tercatat di riwayat pasar (sejak pemasangan ini). Sampel belum cukup untuk menilai.'};
+ const utcD=t=>{const x=String(t);if(x.length===10)return x;return new Date(/(Z|[+-]\d\d:\d\d)$/.test(x)?x:x+'+07:00').toISOString().slice(0,10)}; // tgl tanpa zona dianggap WIB
+ const vrPosts=[...new Set(EZ.filter(p=>tagEliz(p.teks).includes('volume_rendah')).map(p=>utcD(p.tgl)))];
+ const terukur=vrPosts.filter(d=>byDay[d]&&byDay[d].vr!=null).map(d=>({d,vr:byDay[d].vr,flag:byDay[d].vr<TH.volRendah,bf:!!byDay[d].bf}));
+ const sb=hist.filter(h=>h.vr!=null).slice(-21).map(h=>h.vr);
+ out.ujiEliz={postVolumeRendah:vrPosts.length,hariTerukur:terukur.length,cocok:terukur.filter(x=>x.flag).length,rinci:terukur,
+  sebaran:sb.length?{n:sb.length,rendah:sb.filter(v=>v<TH.volRendah).length,min:Math.min(...sb),med:med(sb),max:Math.max(...sb)}:null,
+  catatan:'Hari bertanda bf direkonstruksi dari kline (30 koin teratas saat ini). Tanggal postingan tanpa zona dianggap WIB lalu diubah ke hari UTC. Sampel kecil: jangan ubah ambang 0,9 sebelum puluhan hari terukur.'};
 
  // uji batas harian (hipotesis): sinyal ke-(cap+1) dst pada hari yang sama
  const rowsToday=ALL.filter(x=>x.d===today),lewat=rowsToday.filter(x=>x.rk>cap).length;
@@ -90,7 +107,7 @@ export async function overlay(out,C,RES,ALL){
    else{const c=cache[r.a+r.d+r.en]??=await conf(r);kp=c[0];kn=c[1];if(r.dist!=null&&Math.abs(r.dist)>TH.maxJarakPct&&kp==='SIAP'){kp='TUNGGU';kn='harga >'+TH.maxJarakPct+'% dari entry'}}
    if(r.a==='BTC'&&r.d==='SHORT'&&eu?.arah==='menguat')kn+=' | EUR/USD menguat: hati-hati short BTC'
   }catch{kn='konfirmasi gagal diambil'}
-  if(r.rk>cap){kp='LEWAT BATAS';kn=`sinyal ke-${r.rk} hari ini (batas uji ${cap}); hanya diuji`}
+  if(r.rk>cap){kp='LEWAT BATAS';kn=`sinyal ke-${r.rk} pada ${r.w} (batas uji ${cap}); hanya diuji`}
   r.kp=kp;r.kn=kn;
   const k=`${e.id}|${r.a}|${r.w}|${r.d}`;if(kp!=='-'&&!seen.has(k))seen.set(k,{k,t:new Date().toISOString(),kp,rg:reg?.status||'?',bf:r.w<today2})}
  const dec=[...seen.values()].slice(-3000),G2={};
@@ -101,7 +118,7 @@ export async function overlay(out,C,RES,ALL){
 
  let m=`\n## Kondisi pasar objektif\n`+(reg?`- Status: ${reg.status}${reg.flags.length?' ('+reg.flags.join('; ')+')':''}\n- Volume altcoin (median 7 hari / median 60 hari, ${reg.volN} koin): ${reg.volRatio==null?'-':reg.volRatio.toFixed(2)+'x'}; BTC: ${reg.btcVr.toFixed(2)}x\n- ATR14 BTC ${reg.atrPct.toFixed(1)}%, range 14 hari ${reg.range14.toFixed(1)}%\n`:'- tidak tersedia\n')+(eu?`- EUR/USD ${eu.arah} (1 hari ${eu.d1.toFixed(2)}%, 3 hari ${eu.d3.toFixed(2)}%)\n`:'');
  m+=`\n## Uji batas harian (hipotesis, bukan aturan mesin)\nBatas uji ${cap}/hari. Hari ini ${rowsToday.length} sinyal, ${lewat} melewati batas.\n`+(out.ujiHarian.grup.map(g=>`- ${g.g}: n=${g.n}, TP=${g.tp}, R/trade ${g.r.toFixed(2)}`).join('\n')||'- belum ada data')+'\n';
- m+=`\n## Uji volume vs @eliz883\n- Postingan yang menyebut volume rendah: ${out.ujiEliz.postVolumeRendah}; hari terukur: ${out.ujiEliz.hariTerukur}; cocok: ${out.ujiEliz.cocok}\n- ${out.ujiEliz.catatan}\n`;
+ m+=`\n## Uji volume vs @eliz883\n- Postingan yang menyebut volume rendah: ${out.ujiEliz.postVolumeRendah}; hari terukur: ${out.ujiEliz.hariTerukur}; cocok: ${out.ujiEliz.cocok}\n${out.ujiEliz.rinci.map(x=>`- ${x.d}: volume ${x.vr.toFixed(2)}x, ${x.flag?'ditandai rendah':'TIDAK ditandai'}${x.bf?' (rekonstruksi)':''}\n`).join('')}${out.ujiEliz.sebaran?`- Sebaran 21 hari terakhir: ${out.ujiEliz.sebaran.n} hari, ${out.ujiEliz.sebaran.rendah} di bawah ${TH.volRendah}; min ${out.ujiEliz.sebaran.min.toFixed(2)}, median ${out.ujiEliz.sebaran.med.toFixed(2)}, maks ${out.ujiEliz.sebaran.max.toFixed(2)}\n`:''}- ${out.ujiEliz.catatan}\n`;
  m+=`\n## Keputusan monitor untuk sinyal menunggu\n`;
  for(const e of out.engines)for(const r of e.pending)m+=`- ${e.id} ${r.a} ${r.d} entry ${r.en}: ${r.kp} ${r.kn}\n`;
  m+=`\n## Audit lapisan keputusan\n${out.audit.grup.map(g=>`- ${g.g}: n=${g.n}, TP=${g.tp}, R/trade ${g.r.toFixed(2)}`).join('\n')||'- belum ada sinyal selesai'}\n`;

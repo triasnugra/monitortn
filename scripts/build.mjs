@@ -6,6 +6,7 @@ async function getJ(e){
  if(LOCAL)return JSON.parse(fs.readFileSync(`${LOCAL}/${e.repo}-main/data/journal.json`,'utf8'));
  const r=await fetch(`https://raw.githubusercontent.com/${C.owner}/${e.repo}/main/data/journal.json`,{headers:TOK?{Authorization:'token '+TOK}:{}});
  if(!r.ok)throw new Error(`${e.id}: HTTP ${r.status} (repo privat? isi secret MONITOR_TOKEN)`);return r.json()}
+async function lastCommit(e){if(LOCAL)return null;try{const r=await fetch(`https://api.github.com/repos/${C.owner}/${e.repo}/commits?path=data/journal.json&per_page=1`,{headers:{Accept:'application/vnd.github+json',...(TOK?{Authorization:'token '+TOK}:{})},signal:AbortSignal.timeout(10000)});if(!r.ok)return null;const j=await r.json();return j[0]?Date.parse(j[0].commit.committer.date):null}catch{return null}}
 const wil=(k,n)=>{if(!n)return null;const z=1.96,p=k/n,d=1+z*z/n,c=p+z*z/(2*n),m=z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n));return[(c-m)/d,(c+m)/d]};
 const wk=r=>{const d=new Date(r.waktu.slice(0,10));const t=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));t.setUTCDate(t.getUTCDate()+4-(t.getUTCDay()||7));return t.getUTCFullYear()+'-'+Math.ceil(((t-Date.UTC(t.getUTCFullYear(),0,1))/DAY+1)/7)};
 const net=r=>{const e=+r.entry,s=+r.sl;return +r.R-(C.costPct/100)/(Math.abs(e-s)/e)};
@@ -35,7 +36,9 @@ const dir={};for(const s of['LONG','SHORT'])dir[s]=stats(all.filter(r=>r.arah===
   jurnal:all.slice(-120).reverse().map(r=>({w:r.waktu.slice(0,16),a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,h:r.hasil,R:r.R,al:r.alasan,sk:r.score??null,gr:r.grade??null})),
   pending:pend.map(r=>({a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,px:r.px,dist:r.dist,w:r.waktu.slice(0,10),rk:r.rk}))});
  const lastAny=J.at(-1),age=(now-new Date(lastAny.waktu.replace(' UTC','Z').replace(' ','T')))/36e5;
- if(age>36)W('merah',e.id,`Jurnal terakhir ${age.toFixed(0)} jam lalu: workflow jurnal mungkin mati`,'Cek Actions di repo mesin');
+ if(age>36){const cm=await lastCommit(e),cage=cm==null?null:(now-cm)/36e5;
+  if(cage!=null&&cage<=36)W('info',e.id,`Tidak ada baris jurnal baru ${age.toFixed(0)} jam, tetapi journal.json di-commit ${cage.toFixed(0)} jam lalu: workflow tampak hidup (mesin selektif)`,null);
+  else W('kuning',e.id,`Baris jurnal terakhir ${age.toFixed(0)} jam lalu`+(cage==null?' (waktu commit tidak terbaca)':`, commit terakhir journal.json ${cage.toFixed(0)} jam lalu`)+'. Bisa berarti memang tidak ada sinyal, bukan workflow mati','Buka tab Actions di repo mesin sekali untuk memastikan')}
  if(st.sinyalPerHari>10)W('kuning',e.id,`Overtrading: ${st.sinyalPerHari.toFixed(0)} sinyal/hari. @eliz883: tidak harus trading tiap hari`,'Tambah batas harian dan skor minimum (seperti tnv2c2)');
  if(st.terisi<30)W('info',e.id,`Sampel kecil (${st.terisi} trade terisi): hasil belum bermakna`,'Tunggu data; jangan ubah mesin');
  const L=dir.LONG,S=dir.SHORT;
