@@ -32,8 +32,8 @@ const dir={};for(const s of['LONG','SHORT'])dir[s]=stats(all.filter(r=>r.arah===
  const dupN=all.filter(r=>r.hasil==='menunggu').length-pend.length;if(dupN>0)W('info',e.id,dupN+' sinyal menunggu duplikat (koin, arah, entry sama dengan analisis lebih baru) disembunyikan',null);for(const r of pend){const p=await price(r.aset);r.px=p;r.dist=p?(p-+r.entry)/+r.entry*100:null}
  const ready=[[st.terisi>=C.minTrades,`Trade terisi ${st.terisi}/${C.minTrades}`],[st.minggu>=C.minWeeks,`Minggu ${st.minggu}/${C.minWeeks}`],[!!st.ci&&st.ci[0]>0,'CI95 bawah R/trade > 0'],[st.pf>=1.2,'Profit factor >= 1,2']];
  if(th.ok&&th.n>=30){if(th.be<0.3)W('kuning',e.id,`Edge tipis terhadap biaya: biaya impas ${th.be.toFixed(2)}% (asumsi ${C.costPct}%). Selisih biaya/slippage kecil dapat menghapus profit`,'Uji biaya nyata di Binance (fee tier, slippage) sebelum uang sungguhan');if(th.top3!=null&&th.top3>0.5)W('kuning',e.id,`Hasil terkonsentrasi: 3 trade teratas = ${(th.top3*100).toFixed(0)}% dari total untung`,'Tanpa 3 trade itu R/trade = '+(th.meanEx3==null?'-':th.meanEx3.toFixed(2)))}
- out.engines.push({id:e.id,nama:e.nama,start:e.start,tharp:th,all:st,sejakBersama:sc,tujuhHari:s7,dir,ready,layak:ready.every(x=>x[0]),
-  jurnal:all.slice(-120).reverse().map(r=>({w:r.waktu.slice(0,16),a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,h:r.hasil,R:r.R,al:r.alasan,sk:r.score??null,gr:r.grade??null})),
+ out.engines.push({id:e.id,nama:e.nama,start:e.start,tharp:th,level:levelStat(all.filter(fin)),all:st,sejakBersama:sc,tujuhHari:s7,dir,ready,layak:ready.every(x=>x[0]),
+  jurnal:[...all].reverse().map(r=>{const x=+r.tx;return{w:r.waktu.slice(0,16),a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,h:r.hasil,R:r.R,al:r.alasan,sk:r.score??null,gr:r.grade??null,wx:Number.isFinite(x)&&x>0?new Date(x).toISOString().slice(0,16).replace('T',' '):null,wd:Number.isFinite(x)&&x>0&&+r.due===x}}),
   pending:pend.map(r=>({a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,px:r.px,dist:r.dist,w:r.waktu.slice(0,10),rk:r.rk}))});
  const lastAny=J.at(-1),age=(now-new Date(lastAny.waktu.replace(' UTC','Z').replace(' ','T')))/36e5;
  if(age>36){const cm=await lastCommit(e),cage=cm==null?null:(now-cm)/36e5;
@@ -61,6 +61,19 @@ function tharp(f){
   biaya:[0,.1,.2,.3,.5].map(c=>({c,r:mean(net(c))})),
   dist:edges.map(([l,fn])=>({l,n:g.filter(fn).length})),
   top3:pos>0?top3/pos:null,meanEx3:n>3?mean(srt.slice(3)):null}}
+// ===== Level unik: sinyal berulang dengan koin, arah, entry, SL, TP sama dihitung SATU trade independen =====
+// R/level = rata-rata R sesudah biaya semua baris pada level itu (bobot sama per level).
+// N efektif (Kish) = N^2 / jumlah(ukuran klaster^2): turun bila banyak baris menumpuk di sedikit level.
+function levelStat(f){
+ const n=f.length,g={};for(const r of f)(g[[r.aset,r.arah,r.entry,r.sl,r.tp].join('|')]??=[]).push(r);
+ const L=Object.values(g),u=L.length;if(!u)return{ok:false,n,u:0};
+ const lv=L.map(v=>sum(v.map(net))/v.length),m=sum(lv)/u,sd=u>1?Math.sqrt(sum(lv.map(x=>(x-m)**2))/(u-1)):null;
+ const tp=L.filter(v=>v[0].hasil==='TP').length,sl=L.filter(v=>v[0].hasil==='SL').length,big=L.reduce((a,v)=>v.length>a.n?{n:v.length,a:v[0].aset,d:v[0].arah}:a,{n:0});
+ return{ok:true,n,u,dup:n-u,neff:n*n/sum(L.map(v=>v.length**2)),mean:m,sd,sqn:sd>0?Math.sqrt(u)*m/sd:null,tp,sl,exp:u-tp-sl,big}}
+function levelMd(out){let m='\n## Level unik (trade independen)\n';
+ for(const e of out.engines){const l=e.level;if(!l||!l.ok){m+=`- ${e.id}: data belum cukup\n`;continue}
+  m+=`- ${e.id}: terisi ${l.n} baris = ${l.u} level unik (duplikat ${l.dup}); N efektif ${l.neff.toFixed(0)}; R/trade per baris ${f2(e.all.netR)} vs R/level ${f2(l.mean)} (SD ${f2(l.sd)}, SQN level ${f2(l.sqn)}${l.u<30?', N<30':''}); TP/SL/kedaluwarsa per level (baris pertama) ${l.tp}/${l.sl}/${l.exp}; level paling berulang ${l.big.a} ${l.big.d} ${l.big.n}x\n`}
+ return m+'- Catatan: level = koin, arah, entry, SL, TP sama. Baris di level yang sama sering keluar bersamaan, jadi bukan bukti independen. SQN level jangan ditafsirkan sebelum level unik >= 30.\n'}
 function tharpMd(out){let m='\n## Uji ala Van Tharp (SQN, biaya, distribusi R)\n';
  for(const e of out.engines){const t=e.tharp;if(!t||!t.ok){m+=`- ${e.id}: data belum cukup\n`;continue}
   m+=`- ${e.id}: N=${t.n}, R/trade ${t.mean.toFixed(2)}, SD ${t.sd.toFixed(2)}, SQN ${t.sqn==null?'-':t.sqn.toFixed(2)} (SQN100 ${t.sqn100==null?'-':t.sqn100.toFixed(2)}, ${t.cls}); biaya impas ${t.be.toFixed(2)}%; biaya 0,1/0,3/0,5%: ${[1,3,4].map(i=>t.biaya[i].r.toFixed(2)).join(' / ')}R; 3 trade teratas = ${t.top3==null?'-':(t.top3*100).toFixed(0)+'%'} dari total untung; R/trade tanpa 3 teratas ${t.meanEx3==null?'-':t.meanEx3.toFixed(2)}\n    distribusi R: ${t.dist.map(d=>d.l+': '+d.n).join(' | ')}\n`}
@@ -70,7 +83,7 @@ W('kuning','monitor','Penilaian monitor memakai hasil jurnal mesin (masa order 7
 for(const e of out.engines)if(!e.layak)W('merah',e.id,'BELUM LAYAK uang sungguhan: '+e.ready.filter(x=>!x[0]).map(x=>x[1]).join('; '),'Jika tetap trading di Binance, risiko maks 0,25% per trade');
 let EZ=[];try{EZ=JSON.parse(fs.readFileSync('data/eliz-posts.json','utf8'))}catch{}
 const tick=new Set();EZ.slice(-30).forEach(p=>[...p.teks.matchAll(/\$([A-Z]{2,10})/g)].forEach(m=>tick.add(m[1])));
-out.eliz={posts:EZ.slice(-10).reverse(),tickers:[...tick],lastPost:EZ.at(-1)?.tgl||null,cocok:[...tick].map(t=>({t,sinyal:out.engines.map(e=>({e:e.id,n:e.jurnal.filter(r=>r.a===t).slice(0,3).map(r=>r.d+' '+r.w.slice(5,10)+' '+r.h)}))}))};
+out.eliz={posts:EZ.slice(-10).reverse(),tickers:[...tick],lastPost:EZ.at(-1)?.tgl||null,cocok:[...tick].map(t=>({t,sinyal:out.engines.map(e=>({e:e.id,n:e.jurnal.slice(0,120).filter(r=>r.a===t).slice(0,3).map(r=>r.d+' '+r.w.slice(5,10)+' '+r.h)}))}))};
 if(!EZ.length)W('kuning','eliz','data/eliz-posts.json kosong','Tambahkan postingan terbaru @eliz883');
 else if((now-new Date(EZ.at(-1).tgl))/DAY>3)W('kuning','eliz',`Postingan @eliz883 terakhir di monitor sudah ${((now-new Date(EZ.at(-1).tgl))/DAY).toFixed(0)} hari`,'Perbarui data/eliz-posts.json');
 fs.mkdirSync('site',{recursive:true});const OV=await overlay(out,C,RES,ALL);const f=(x,d=2)=>x==null?'-':x.toFixed(d),pc=x=>x==null?'-':(100*x).toFixed(0)+'%';
@@ -79,7 +92,7 @@ for(const e of out.engines)md+=`| ${e.nama} | ${e.all.sinyal} | ${e.all.terisi} 
 md+=`\n## LONG vs SHORT\n`;for(const e of out.engines)md+=`- ${e.id}: LONG n=${e.dir.LONG.terisi} R/trade ${f(e.dir.LONG.netR)}; SHORT n=${e.dir.SHORT.terisi} R/trade ${f(e.dir.SHORT.netR)}\n`;
 md+=`\n## Warning\n`;for(const w of out.warnings)md+=`- [${w.lvl}] ${w.e}: ${w.t}${w.aksi?' -> '+w.aksi:''}\n`;
 md+=`\n## Postingan terbaru @eliz883 (tickers: ${out.eliz.tickers.join(', ')||'-'})\n`;for(const p of out.eliz.posts.slice(0,5))md+=`- ${p.tgl}: ${p.teks.slice(0,400)}\n`;
-md+=OV+tharpMd(out);md+=`\n## Permintaan\nEvaluasi laporan ini, cocokkan dengan postingan @eliz883 di atas, lalu buatkan full coding perbaikan (zip utuh siap commit lewat GitHub web UI). Prinsip: jangan ubah core.mjs/trade-sim.mjs selama forward test tanpa memulai protokol baru; jujur soal sampel kecil dan rezim pasar. Unggah zip repo mesin terbaru bila perlu diverifikasi.\n`;
+md+=OV+tharpMd(out)+levelMd(out);md+=`\n## Permintaan\nEvaluasi laporan ini, cocokkan dengan postingan @eliz883 di atas, lalu buatkan full coding perbaikan (zip utuh siap commit lewat GitHub web UI). Prinsip: jangan ubah core.mjs/trade-sim.mjs selama forward test tanpa memulai protokol baru; jujur soal sampel kecil dan rezim pasar. Unggah zip repo mesin terbaru bila perlu diverifikasi.\n`;
 out.laporan=md;
 let LG=[];if(!LOCAL){const r=await fetch(`https://${C.owner}.github.io/monitortn/laporan-log.json`);if(r.ok)LG=await r.json();else if(r.status!==404)throw new Error('laporan-log.json HTTP '+r.status+': build dihentikan agar riwayat tidak hilang')}
 if(process.env.LOG_IN)LG=JSON.parse(fs.readFileSync(process.env.LOG_IN,'utf8'));

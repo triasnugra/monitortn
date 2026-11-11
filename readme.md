@@ -11,5 +11,3 @@ v2.2: kolom Laporan untuk Claude (maks 3, snapshot tiap 3 hari, status biru/hija
 v4: lapisan uji ala Van Tharp (SQN, biaya impas dan sensitivitas biaya, distribusi R, konsentrasi trade teratas).
 
 v5.1: laporan harian yang terlewat direkonstruksi dari jurnal (3 hari terakhir), diberi label REKONSTRUKSI.
-
-v5.2: uji volume vs @eliz883 langsung terukur (rasio volume 21 hari terakhir direkonstruksi dari kline, ditandai rekonstruksi); label LEWAT BATAS memakai tanggal sinyal; peringatan workflow mati memeriksa waktu commit journal.json dan tidak lagi merah hanya karena tidak ada sinyal baru. Mesin tidak diubah.
