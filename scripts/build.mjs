@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import {overlay} from './overlay.mjs';
+import {buildCanonical} from './signals-core.mjs';
 const C=JSON.parse(fs.readFileSync('config.json','utf8')),LOCAL=process.env.LOCAL_DIR,TOK=process.env.MONITOR_TOKEN;
 const now=process.env.FAKE_NOW?Date.parse(process.env.FAKE_NOW):Date.now(),DAY=864e5,fin=r=>['TP','SL','kedaluwarsa'].includes(r.hasil);
 async function getJ(e){
@@ -19,9 +20,13 @@ function stats(rows){const f=rows.filter(fin),tp=f.filter(r=>r.hasil==='TP').len
 const out={updated:new Date(now).toISOString(),cfg:{minTrades:C.minTrades,minWeeks:C.minWeeks},engines:[],warnings:[]};
 const W=(lvl,e,t,aksi)=>out.warnings.push({lvl,e,t,aksi});
 const RES={};const ENG={};const ALL=[];const px={};async function price(a){if(a in px)return px[a];try{const r=await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${a}USDT`,{signal:AbortSignal.timeout(8000)});px[a]=r.ok?+(await r.json()).price:null}catch{px[a]=null}return px[a]}
+// Sumber data tunggal: signals-core.mjs memilih analisis MILIK tiap mesin (berdasar hash engine, bukan nama agen/tanggal).
+const JALL={};for(const e of C.engines){try{JALL[e.id]=await getJ(e)}catch(x){/* dilaporkan di loop bawah */}}
+const KAN=buildCanonical(JALL);
+for(const [m,L] of Object.entries(KAN.laporan))console.log('kanonik',m,JSON.stringify({baris:L.baris_mesin,sendiri:L.sendiri,warisan:L.warisan_v1,twin:L.twin_dibuang}));
 for(const e of C.engines){
- let J;try{J=await getJ(e)}catch(x){W('merah',e.id,'Jurnal tidak terbaca: '+x.message,'Periksa nama repo di config.json atau secret MONITOR_TOKEN');continue}
- const all=J.filter(r=>r.agen===e.agen&&r.waktu>=e.start),com=all.filter(r=>r.waktu>=C.commonStart),last=all.at(-1);
+ let J;try{J=JALL[e.id]??await getJ(e)}catch(x){W('merah',e.id,'Jurnal tidak terbaca: '+x.message,'Periksa nama repo di config.json atau secret MONITOR_TOKEN');continue}
+ const OWN=new Set(KAN.rows.filter(x=>x.mesin===e.id&&x.milik==='sendiri').map(x=>x.id)),all=J.filter(r=>OWN.has(e.id+'|'+r.id)&&r.waktu>=e.start),com=all.filter(r=>r.waktu>=C.commonStart),last=all.at(-1);
  if(!last){W('merah',e.id,'Tidak ada baris jurnal untuk agen '+e.agen,'Periksa config.json');continue}
  const dd={};[...all].sort((a,b)=>a.waktu<b.waktu?-1:a.waktu>b.waktu?1:0).forEach(r=>{const d=r.waktu.slice(0,10);dd[d]=(dd[d]||0)+1;r.rk=dd[d]});
 for(const r of all)ALL.push({e:e.id,w:r.waktu,d:r.waktu.slice(0,10),a:r.aset,arah:r.arah,h:r.hasil,R:fin(r)?net(r):null,rk:r.rk});
