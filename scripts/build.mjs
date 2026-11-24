@@ -16,7 +16,7 @@ function stats(rows){const f=rows.filter(fin),tp=f.filter(r=>r.hasil==='TP').len
  const gp=sum(n.filter(x=>x>0)),gl=-sum(n.filter(x=>x<0)),Wk=new Set(f.map(wk)),days=new Set(rows.map(r=>r.waktu.slice(0,10)));
  let ci=null;if(Wk.size>=12){const g={};f.forEach(r=>(g[wk(r)]??=[]).push(net(r)));const v=Object.values(g),b=[];for(let i=0;i<2000;i++){let s=0,c=0;for(let j=0;j<v.length;j++){const x=v[Math.floor(Math.random()*v.length)];s+=sum(x);c+=x.length}b.push(s/c)}b.sort((a,c)=>a-c);ci=[b[50],b[1950]]}
  return{sinyal:rows.length,terisi:f.length,tp,sl,exp:f.length-tp-sl,tdkIsi:rows.filter(r=>r.hasil==='tidak terisi').length,menunggu:rows.filter(r=>r.hasil==='menunggu').length,
-  win:tp+sl?tp/(tp+sl):null,winCI:wil(tp,tp+sl),netR:f.length?sum(n)/f.length:null,totalR:sum(n),pf:gl?gp/gl:null,minggu:Wk.size,hari:days.size,sinyalPerHari:days.size?rows.length/days.size:0,ci}}
+  win:tp+sl?tp/(tp+sl):null,tpRate:f.length?tp/f.length:null,winCI:wil(tp,tp+sl),netR:f.length?sum(n)/f.length:null,totalR:sum(n),pf:gl?gp/gl:null,minggu:Wk.size,hari:days.size,sinyalPerHari:days.size?rows.length/days.size:0,ci}}
 const out={updated:new Date(now).toISOString(),cfg:{minTrades:C.minTrades,minWeeks:C.minWeeks},engines:[],warnings:[]};
 const W=(lvl,e,t,aksi)=>out.warnings.push({lvl,e,t,aksi});
 const RES={};const ENG={};const ALL=[];const px={};async function price(a){if(a in px)return px[a];try{const r=await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${a}USDT`,{signal:AbortSignal.timeout(8000)});px[a]=r.ok?+(await r.json()).price:null}catch{px[a]=null}return px[a]}
@@ -92,8 +92,8 @@ out.eliz={posts:EZ.slice(-10).reverse(),tickers:[...tick],lastPost:EZ.at(-1)?.tg
 if(!EZ.length)W('kuning','eliz','data/eliz-posts.json kosong','Tambahkan postingan terbaru @eliz883');
 else if((now-new Date(EZ.at(-1).tgl))/DAY>3)W('kuning','eliz',`Postingan @eliz883 terakhir di monitor sudah ${((now-new Date(EZ.at(-1).tgl))/DAY).toFixed(0)} hari`,'Perbarui data/eliz-posts.json');
 fs.mkdirSync('site',{recursive:true});const OV=await overlay(out,C,RES,ALL);const f=(x,d=2)=>x==null?'-':x.toFixed(d),pc=x=>x==null?'-':(100*x).toFixed(0)+'%';
-let md=`# Laporan monitor untuk Claude (${out.updated})\n\n## Kinerja (hasil jurnal mesin, biaya ${C.costPct}% pulang-pergi)\n| Mesin | Sinyal | Terisi | TP/SL | Win | R/trade | PF | Minggu | Sejak ${C.commonStart}: terisi / R/trade |\n|---|---|---|---|---|---|---|---|---|\n`;
-for(const e of out.engines)md+=`| ${e.nama} | ${e.all.sinyal} | ${e.all.terisi} | ${e.all.tp}/${e.all.sl} | ${pc(e.all.win)} | ${f(e.all.netR)} | ${f(e.all.pf)} | ${e.all.minggu} | ${e.sejakBersama.terisi} / ${f(e.sejakBersama.netR)} |\n`;
+let md=`# Laporan monitor untuk Claude (${out.updated})\n\n## Kinerja (hasil jurnal mesin, biaya ${C.costPct}% pulang-pergi)\n| Mesin | Sinyal | Terisi | TP/SL | Win TP/(TP+SL) | TP/terisi | R/trade | PF | Minggu | Sejak ${C.commonStart}: terisi / R/trade |\n|---|---|---|---|---|---|---|---|---|---|\n`;
+for(const e of out.engines)md+=`| ${e.nama} | ${e.all.sinyal} | ${e.all.terisi} | ${e.all.tp}/${e.all.sl} | ${pc(e.all.win)} | ${pc(e.all.tpRate)} | ${f(e.all.netR)} | ${f(e.all.pf)} | ${e.all.minggu} | ${e.sejakBersama.terisi} / ${f(e.sejakBersama.netR)} |\n`;
 md+=`\n## LONG vs SHORT\n`;for(const e of out.engines)md+=`- ${e.id}: LONG n=${e.dir.LONG.terisi} R/trade ${f(e.dir.LONG.netR)}; SHORT n=${e.dir.SHORT.terisi} R/trade ${f(e.dir.SHORT.netR)}\n`;
 md+=`\n## Warning\n`;for(const w of out.warnings)md+=`- [${w.lvl}] ${w.e}: ${w.t}${w.aksi?' -> '+w.aksi:''}\n`;
 md+=`\n## Postingan terbaru @eliz883 (tickers: ${out.eliz.tickers.join(', ')||'-'})\n`;for(const p of out.eliz.posts.slice(0,5))md+=`- ${p.tgl}: ${p.teks.slice(0,400)}\n`;

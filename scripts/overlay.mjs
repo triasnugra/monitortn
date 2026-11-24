@@ -55,6 +55,7 @@ async function gapDiag(){const t=(await bj('ticker/24hr')).filter(x=>x.symbol.en
 // Tag ringan dari teks @eliz883 (untuk dicocokkan, BUKAN untuk memicu keputusan)
 export function tagEliz(t){const s=String(t).toLowerCase(),tg=[];
  if(/volume/.test(s)&&/(low|little|rendah|thin|weak|lack|pointless|without)/.test(s))tg.push('volume_rendah');
+ if(/order ?books?/.test(s)&&/(empty|thin|shallow)/.test(s))tg.push('orderbook_tipis');
  if(/choppy|mess|pointless|no clear|unreliable|sideways|range-bound|directionless|no direction/.test(s))tg.push('choppy');
  return tg}
 
@@ -81,7 +82,7 @@ export async function overlay(out,C,RES,ALL){
  const vrPosts=[...new Set(EZ.filter(p=>tagEliz(p.teks).includes('volume_rendah')).map(p=>utcD(p.tgl)))];
  const terukur=vrPosts.filter(d=>byDay[d]&&byDay[d].vr!=null).map(d=>({d,vr:byDay[d].vr,flag:byDay[d].vr<TH.volRendah,bf:!!byDay[d].bf}));
  const sb=hist.filter(h=>h.vr!=null).slice(-21).map(h=>h.vr);
- out.ujiEliz={postVolumeRendah:vrPosts.length,hariTerukur:terukur.length,cocok:terukur.filter(x=>x.flag).length,rinci:terukur,
+ out.ujiEliz={postVolumeRendah:vrPosts.length,postOrderbookTipis:[...new Set(EZ.filter(p=>tagEliz(p.teks).includes('orderbook_tipis')).map(p=>utcD(p.tgl)))].length,hariTerukur:terukur.length,cocok:terukur.filter(x=>x.flag).length,rinci:terukur,
   sebaran:sb.length?{n:sb.length,rendah:sb.filter(v=>v<TH.volRendah).length,min:Math.min(...sb),med:med(sb),max:Math.max(...sb)}:null,
   catatan:'Hari bertanda bf direkonstruksi dari kline (30 koin teratas saat ini). Tanggal postingan tanpa zona dianggap WIB lalu diubah ke hari UTC. Sampel kecil: jangan ubah ambang 0,9 sebelum puluhan hari terukur.'};
 
@@ -89,6 +90,8 @@ export async function overlay(out,C,RES,ALL){
  const rowsToday=ALL.filter(x=>x.d===today),lewat=rowsToday.filter(x=>x.rk>cap).length;
  const G={};for(const x of ALL){if(x.R==null)continue;const g=x.rk>cap?'lewat':'dalam';const s=G[g]??={n:0,tp:0,r:0};s.n++;if(x.h==='TP')s.tp++;s.r+=x.R}
  out.ujiHarian={cap,hariIni:rowsToday.length,lewatHariIni:lewat,grup:Object.entries(G).map(([g,s])=>({g:g==='lewat'?`lewat batas (sinyal ke-${cap+1} dst)`:`dalam batas (maks ${cap}/hari)`,n:s.n,tp:s.tp,r:s.r/s.n}))};
+ const WG={};for(const x of ALL){if(x.R==null)continue;const w=new Date(x.d+'T00:00:00Z').getUTCDay(),g=(w===0||w===6)?'akhir pekan (Sab/Min UTC)':'hari kerja';const s=WG[g]??={n:0,tp:0,r:0,q:0};s.n++;if(x.h==='TP')s.tp++;s.r+=x.R;s.q+=x.R*x.R}
+ out.ujiAkhirPekan={grup:Object.entries(WG).map(([g,s])=>{const mu=s.r/s.n;return{g,n:s.n,tp:s.tp,r:mu,se:s.n>1?Math.sqrt(Math.max(0,s.q/s.n-mu*mu)/(s.n-1)):null}}),catatan:'Hipotesis dari postingan @eliz883 (candle Sabtu, order book kosong). Hanya label; gabungan semua mesin, dikelompokkan menurut hari sinyal. Selisih R/trade yang kurang dari sekitar 2 kali galat baku (±) belum berarti.'};
  if(lewat)out.warnings.push({lvl:'info',e:'monitor',t:`Hari ini ${lewat} sinyal melewati batas uji ${cap}/hari`,aksi:'Hanya label keputusan; mesin tidak diubah. Baca audit setelah data cukup'});
  if(reg&&reg.volRatio==null)out.warnings.push({lvl:'kuning',e:'pasar',t:'Volume altcoin tidak terukur (data koin kurang dari '+TH.minKoin+')',aksi:'Cek akses Binance dari Actions'});
 
@@ -118,7 +121,8 @@ export async function overlay(out,C,RES,ALL){
 
  let m=`\n## Kondisi pasar objektif\n`+(reg?`- Status: ${reg.status}${reg.flags.length?' ('+reg.flags.join('; ')+')':''}\n- Volume altcoin (median 7 hari / median 60 hari, ${reg.volN} koin): ${reg.volRatio==null?'-':reg.volRatio.toFixed(2)+'x'}; BTC: ${reg.btcVr.toFixed(2)}x\n- ATR14 BTC ${reg.atrPct.toFixed(1)}%, range 14 hari ${reg.range14.toFixed(1)}%\n`:'- tidak tersedia\n')+(eu?`- EUR/USD ${eu.arah} (1 hari ${eu.d1.toFixed(2)}%, 3 hari ${eu.d3.toFixed(2)}%)\n`:'');
  m+=`\n## Uji batas harian (hipotesis, bukan aturan mesin)\nBatas uji ${cap}/hari. Hari ini ${rowsToday.length} sinyal, ${lewat} melewati batas.\n`+(out.ujiHarian.grup.map(g=>`- ${g.g}: n=${g.n}, TP=${g.tp}, R/trade ${g.r.toFixed(2)}`).join('\n')||'- belum ada data')+'\n';
- m+=`\n## Uji volume vs @eliz883\n- Postingan yang menyebut volume rendah: ${out.ujiEliz.postVolumeRendah}; hari terukur: ${out.ujiEliz.hariTerukur}; cocok: ${out.ujiEliz.cocok}\n${out.ujiEliz.rinci.map(x=>`- ${x.d}: volume ${x.vr.toFixed(2)}x, ${x.flag?'ditandai rendah':'TIDAK ditandai'}${x.bf?' (rekonstruksi)':''}\n`).join('')}${out.ujiEliz.sebaran?`- Sebaran 21 hari terakhir: ${out.ujiEliz.sebaran.n} hari, ${out.ujiEliz.sebaran.rendah} di bawah ${TH.volRendah}; min ${out.ujiEliz.sebaran.min.toFixed(2)}, median ${out.ujiEliz.sebaran.med.toFixed(2)}, maks ${out.ujiEliz.sebaran.max.toFixed(2)}\n`:''}- ${out.ujiEliz.catatan}\n`;
+ m+=`\n## Uji akhir pekan (hipotesis)\n${out.ujiAkhirPekan.grup.map(g=>`- ${g.g}: n=${g.n}, TP=${g.tp}, R/trade ${g.r.toFixed(2)}${g.se!=null?' ± '+g.se.toFixed(2):''}`).join('\n')||'- belum ada data'}\n- ${out.ujiAkhirPekan.catatan}\n`;
+ m+=`\n## Uji volume vs @eliz883\n- Postingan yang menyebut orderbook tipis: ${out.ujiEliz.postOrderbookTipis}\n- Postingan yang menyebut volume rendah: ${out.ujiEliz.postVolumeRendah}; hari terukur: ${out.ujiEliz.hariTerukur}; cocok: ${out.ujiEliz.cocok}\n${out.ujiEliz.rinci.map(x=>`- ${x.d}: volume ${x.vr.toFixed(2)}x, ${x.flag?'ditandai rendah':'TIDAK ditandai'}${x.bf?' (rekonstruksi)':''}\n`).join('')}${out.ujiEliz.sebaran?`- Sebaran 21 hari terakhir: ${out.ujiEliz.sebaran.n} hari, ${out.ujiEliz.sebaran.rendah} di bawah ${TH.volRendah}; min ${out.ujiEliz.sebaran.min.toFixed(2)}, median ${out.ujiEliz.sebaran.med.toFixed(2)}, maks ${out.ujiEliz.sebaran.max.toFixed(2)}\n`:''}- ${out.ujiEliz.catatan}\n`;
  m+=`\n## Keputusan monitor untuk sinyal menunggu\n`;
  for(const e of out.engines)for(const r of e.pending)m+=`- ${e.id} ${r.a} ${r.d} entry ${r.en}: ${r.kp} ${r.kn}\n`;
  m+=`\n## Audit lapisan keputusan\n${out.audit.grup.map(g=>`- ${g.g}: n=${g.n}, TP=${g.tp}, R/trade ${g.r.toFixed(2)}`).join('\n')||'- belum ada sinyal selesai'}\n`;
