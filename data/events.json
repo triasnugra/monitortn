@@ -1,0 +1,336 @@
+{
+ "versi": "2026-11-27",
+ "catatan": "CADANGAN + RIWAYAT. Tiap build, scripts/kalender-sync.mjs mengambil jadwal resmi terbaru dari bls.gov (CPI, NFP) dan federalreserve.gov (FOMC) lalu menggantikan tanggal di file ini dari tanggal pertama yang dimuat sumber dan seterusnya; file ini dipakai bila sumber gagal/diblok dan untuk tanggal yang sudah lewat. Waktu 'et' = waktu New York (kode mengubahnya ke UTC dengan aturan DST AS). Risalah FOMC (3 minggu setelah keputusan) dan opsi Deribit (Jumat terakhir tiap bulan 08:00 UTC; kuartalan Mar/Jun/Sep/Des) dihitung oleh kode dan berlanjut otomatis. PPI, PCE, dan rilis lain belum ada.",
+ "events": [
+  {
+   "id": "nfp-2026-10-02",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2026-10-02 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2026-10-14",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2026-10-14 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "fomc-2026-10-28",
+   "jenis": "FOMC",
+   "nama": "Keputusan suku bunga FOMC + konferensi pers (14:00 ET)",
+   "et": "2026-10-28 14:00",
+   "impact": "tinggi",
+   "sumber": "federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "minutes": true
+  },
+  {
+   "id": "nfp-2026-11-06",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2026-11-06 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2026-11-10",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2026-11-10 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "nfp-2026-12-04",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2026-12-04 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "fomc-2026-12-09",
+   "jenis": "FOMC",
+   "nama": "Keputusan suku bunga FOMC + konferensi pers (14:00 ET)",
+   "et": "2026-12-09 14:00",
+   "impact": "tinggi",
+   "sumber": "federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "minutes": true
+  },
+  {
+   "id": "cpi-2026-12-10",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2026-12-10 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "nfp-2027-01-08",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-01-08 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-01-13",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-01-13 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "fomc-2027-01-27",
+   "jenis": "FOMC",
+   "nama": "Keputusan suku bunga FOMC + konferensi pers (14:00 ET)",
+   "et": "2027-01-27 14:00",
+   "impact": "tinggi",
+   "sumber": "federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "minutes": true
+  },
+  {
+   "id": "nfp-2027-02-05",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-02-05 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-02-11",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-02-11 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "nfp-2027-03-05",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-03-05 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-03-10",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-03-10 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "fomc-2027-03-17",
+   "jenis": "FOMC",
+   "nama": "Keputusan suku bunga FOMC + konferensi pers (14:00 ET)",
+   "et": "2027-03-17 14:00",
+   "impact": "tinggi",
+   "sumber": "federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "minutes": true
+  },
+  {
+   "id": "nfp-2027-04-02",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-04-02 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-04-13",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-04-13 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "fomc-2027-04-28",
+   "jenis": "FOMC",
+   "nama": "Keputusan suku bunga FOMC + konferensi pers (14:00 ET)",
+   "et": "2027-04-28 14:00",
+   "impact": "tinggi",
+   "sumber": "federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "minutes": true
+  },
+  {
+   "id": "nfp-2027-05-07",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-05-07 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-05-12",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-05-12 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "nfp-2027-06-04",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-06-04 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "fomc-2027-06-09",
+   "jenis": "FOMC",
+   "nama": "Keputusan suku bunga FOMC + konferensi pers (14:00 ET)",
+   "et": "2027-06-09 14:00",
+   "impact": "tinggi",
+   "sumber": "federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "minutes": true
+  },
+  {
+   "id": "cpi-2027-06-10",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-06-10 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "nfp-2027-07-02",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-07-02 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-07-14",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-07-14 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "fomc-2027-07-28",
+   "jenis": "FOMC",
+   "nama": "Keputusan suku bunga FOMC + konferensi pers (14:00 ET)",
+   "et": "2027-07-28 14:00",
+   "impact": "tinggi",
+   "sumber": "federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "minutes": true
+  },
+  {
+   "id": "nfp-2027-08-06",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-08-06 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-08-11",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-08-11 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "nfp-2027-09-03",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-09-03 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-09-14",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-09-14 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "fomc-2027-09-15",
+   "jenis": "FOMC",
+   "nama": "Keputusan suku bunga FOMC + konferensi pers (14:00 ET)",
+   "et": "2027-09-15 14:00",
+   "impact": "tinggi",
+   "sumber": "federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "minutes": true
+  },
+  {
+   "id": "nfp-2027-10-08",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-10-08 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-10-14",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-10-14 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "fomc-strategi-2027-10-27",
+   "jenis": "FOMC-STRATEGI",
+   "nama": "FOMC 26-27 Okt 2027: hanya diskusi strategi, TANPA keputusan suku bunga",
+   "et": "2027-10-27 14:00",
+   "impact": "rendah",
+   "sumber": "federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "minutes": false
+  },
+  {
+   "id": "nfp-2027-11-05",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-11-05 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-11-10",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-11-10 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  },
+  {
+   "id": "fomc-2027-11-17",
+   "jenis": "FOMC",
+   "nama": "Keputusan suku bunga FOMC + konferensi pers (14:00 ET)",
+   "et": "2027-11-17 14:00",
+   "impact": "tinggi",
+   "sumber": "federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "minutes": true
+  },
+  {
+   "id": "nfp-2027-12-03",
+   "jenis": "NFP",
+   "nama": "Employment Situation / NFP AS (data tenaga kerja)",
+   "et": "2027-12-03 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/empsit.htm"
+  },
+  {
+   "id": "cpi-2027-12-10",
+   "jenis": "CPI",
+   "nama": "CPI AS (inflasi konsumen)",
+   "et": "2027-12-10 08:30",
+   "impact": "tinggi",
+   "sumber": "bls.gov/schedule/news_release/cpi.htm"
+  }
+ ]
+}

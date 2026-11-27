@@ -27,5 +27,27 @@
    "start": "2026-10-29"
   }
  ],
- "dailyCap": 5
+ "dailyCap": 5,
+ "makro": {
+  "aktif": true,
+  "warnJam": 72,
+  "kuningJam": 24,
+  "merahJam": 2,
+  "sebelumJam": {
+   "tinggi": 4,
+   "sedang": 2
+  },
+  "sesudahJam": {
+   "tinggi": 8,
+   "sedang": 4
+  },
+  "opex": true,
+  "minKalenderHari": 21,
+  "sinkron": {
+   "aktif": true,
+   "jamCache": 6,
+   "timeoutMs": 20000,
+   "userAgent": "monitor-kalender/1.0 (+https://github.com/triasnugra)"
+  }
+ }
 }

@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import {overlay} from './overlay.mjs';
 import {buildCanonical} from './signals-core.mjs';
+import {macroLayer} from './makro.mjs';
+import {syncKalender} from './kalender-sync.mjs';
 const C=JSON.parse(fs.readFileSync('config.json','utf8')),LOCAL=process.env.LOCAL_DIR,TOK=process.env.MONITOR_TOKEN;
 const now=process.env.FAKE_NOW?Date.parse(process.env.FAKE_NOW):Date.now(),DAY=864e5,fin=r=>['TP','SL','kedaluwarsa'].includes(r.hasil);
 async function getJ(e){
@@ -91,13 +93,19 @@ const tick=new Set();EZ.slice(-30).forEach(p=>[...p.teks.matchAll(/\$([A-Z]{2,10
 out.eliz={posts:EZ.slice(-10).reverse(),tickers:[...tick],lastPost:EZ.at(-1)?.tgl||null,cocok:[...tick].map(t=>({t,sinyal:out.engines.map(e=>({e:e.id,n:e.jurnal.slice(0,120).filter(r=>r.a===t).slice(0,3).map(r=>r.d+' '+r.w.slice(5,10)+' '+r.h)}))}))};
 if(!EZ.length)W('kuning','eliz','data/eliz-posts.json kosong','Tambahkan postingan terbaru @eliz883');
 else if((now-new Date(EZ.at(-1).tgl))/DAY>3)W('kuning','eliz',`Postingan @eliz883 terakhir di monitor sudah ${((now-new Date(EZ.at(-1).tgl))/DAY).toFixed(0)} hari`,'Perbarui data/eliz-posts.json');
-fs.mkdirSync('site',{recursive:true});const OV=await overlay(out,C,RES,ALL);const f=(x,d=2)=>x==null?'-':x.toFixed(d),pc=x=>x==null?'-':(100*x).toFixed(0)+'%';
+fs.mkdirSync('site',{recursive:true});const OV=await overlay(out,C,RES,ALL);
+// Kalender makro (FOMC/CPI/NFP/opsi Deribit): peringatan ke depan + uji jendela event. Tidak mengubah mesin.
+const pw=w=>{let x=String(w).replace(' UTC','').replace(' ','T');if(!/(Z|[+-]\d\d:\d\d)$/.test(x))x+='Z';return Date.parse(x)};
+const SYNC=await syncKalender({cfg:C.makro?.sinkron,now,cacheUrl:`https://${C.owner}.github.io/monitortn/kalender-auto.json`,local:!!process.env.LOCAL_DIR&&process.env.FORCE_SYNC!=='1'});
+if(SYNC.simpan){fs.mkdirSync('site',{recursive:true});fs.writeFileSync('site/kalender-auto.json',JSON.stringify(SYNC.simpan))}
+const EVM=macroLayer({cfg:C.makro,now,auto:SYNC,trades:ALL.map(x=>({t:pw(x.w),r:x.R,tp:x.h==='TP'}))});
+out.makro=EVM.makro;{const o={merah:0,kuning:1,info:2};out.warnings.unshift(...EVM.warnings.sort((a,b)=>o[a.lvl]-o[b.lvl]))}const f=(x,d=2)=>x==null?'-':x.toFixed(d),pc=x=>x==null?'-':(100*x).toFixed(0)+'%';
 let md=`# Laporan monitor untuk Claude (${out.updated})\n\n## Kinerja (hasil jurnal mesin, biaya ${C.costPct}% pulang-pergi)\n| Mesin | Sinyal | Terisi | TP/SL | Win TP/(TP+SL) | TP/terisi | R/trade | PF | Minggu | Sejak ${C.commonStart}: terisi / R/trade |\n|---|---|---|---|---|---|---|---|---|---|\n`;
 for(const e of out.engines)md+=`| ${e.nama} | ${e.all.sinyal} | ${e.all.terisi} | ${e.all.tp}/${e.all.sl} | ${pc(e.all.win)} | ${pc(e.all.tpRate)} | ${f(e.all.netR)} | ${f(e.all.pf)} | ${e.all.minggu} | ${e.sejakBersama.terisi} / ${f(e.sejakBersama.netR)} |\n`;
 md+=`\n## LONG vs SHORT\n`;for(const e of out.engines)md+=`- ${e.id}: LONG n=${e.dir.LONG.terisi} R/trade ${f(e.dir.LONG.netR)}; SHORT n=${e.dir.SHORT.terisi} R/trade ${f(e.dir.SHORT.netR)}\n`;
 md+=`\n## Warning\n`;for(const w of out.warnings)md+=`- [${w.lvl}] ${w.e}: ${w.t}${w.aksi?' -> '+w.aksi:''}\n`;
 md+=`\n## Postingan terbaru @eliz883 (tickers: ${out.eliz.tickers.join(', ')||'-'})\n`;for(const p of out.eliz.posts.slice(0,5))md+=`- ${p.tgl}: ${p.teks.slice(0,400)}\n`;
-md+=OV+tharpMd(out)+levelMd(out);md+=`\n## Permintaan\nEvaluasi laporan ini, cocokkan dengan postingan @eliz883 di atas, lalu buatkan full coding perbaikan (zip utuh siap commit lewat GitHub web UI). Prinsip: jangan ubah core.mjs/trade-sim.mjs selama forward test tanpa memulai protokol baru; jujur soal sampel kecil dan rezim pasar. Unggah zip repo mesin terbaru bila perlu diverifikasi.\n`;
+md+=OV+EVM.md+tharpMd(out)+levelMd(out);md+=`\n## Permintaan\nEvaluasi laporan ini, cocokkan dengan postingan @eliz883 di atas, lalu buatkan full coding perbaikan (zip utuh siap commit lewat GitHub web UI). Prinsip: jangan ubah core.mjs/trade-sim.mjs selama forward test tanpa memulai protokol baru; jujur soal sampel kecil dan rezim pasar. Unggah zip repo mesin terbaru bila perlu diverifikasi.\n`;
 out.laporan=md;
 let LG=[];if(!LOCAL){const r=await fetch(`https://${C.owner}.github.io/monitortn/laporan-log.json`);if(r.ok)LG=await r.json();else if(r.status!==404)throw new Error('laporan-log.json HTTP '+r.status+': build dihentikan agar riwayat tidak hilang')}
 if(process.env.LOG_IN)LG=JSON.parse(fs.readFileSync(process.env.LOG_IN,'utf8'));

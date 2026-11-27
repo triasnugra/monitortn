@@ -43,14 +43,14 @@ function barAtas(){let b='';
  if(biru)b+=`<div class="card biru"><b>${biru} laporan belum dikirim ke Claude lebih dari 3 hari.</b> Lihat bagian Laporan untuk Claude.</div>`;
  const g=D.regime;
  if(g)b+=`<div class="card"><b class="${g.status==='NORMAL'?'ok':g.status==='SELEKTIF'?'kuning':'merah'}">Pasar: ${esc(g.status)}</b> ${esc(g.flags.join('; ')||'kondisi normal')}<br><small>BTC ATR14 ${f(g.atrPct,1)}% · range 14 hari ${f(g.range14,1)}% · volume altcoin ${f(g.volRatio)}x (median 7/60 hari) · BTC ${f(g.btcVr)}x${D.eur?' · EUR/USD '+esc(D.eur.arah)+' ('+f(D.eur.d3)+'% 3 hari, informasi saja)':''}</small></div>`;
- return b}
+ b+=makroBar();return b}
 
 function html(){const E=D.engines;let h=barAtas();
  h+='<h2>Perbandingan</h2><div class="card w"><table><tr><th>Mesin<th>Sinyal<th>Terisi<th>TP/SL<th>Win (CI95)<th>TP/terisi<th>R/trade<th>PF<th>Minggu<th>Sejak bersama: terisi · R/trade<th>LONG R<th>SHORT R<th>Layak uang nyata?</tr>';
  for(const e of E){const a=e.all;h+=`<tr><td><b>${esc(e.nama)}</b><td>${a.sinyal}<td>${a.terisi}<td>${a.tp}/${a.sl}<td>${pc(a.win)} ${a.winCI?'('+pc(a.winCI[0])+'-'+pc(a.winCI[1])+')':''}<td>${pc(a.tpRate)}<td>${f(a.netR)}<td>${f(a.pf)}<td>${a.minggu}<td>${e.sejakBersama.terisi} · ${f(e.sejakBersama.netR)}<td>${f(e.dir.LONG.netR)} (${e.dir.LONG.terisi})<td>${f(e.dir.SHORT.netR)} (${e.dir.SHORT.terisi})<td class="${e.layak?'ok':'merah'}">${e.layak?'LAYAK':'BELUM'}</tr>`}
  h+='</table></div><h2>Syarat uang sungguhan</h2>';
  for(const e of E)h+=`<div class="card"><b>${esc(e.nama)}</b>: `+e.ready.map(x=>`<span class="${x[0]?'ok':'merah'}">${x[0]?'✔':'✖'} ${esc(x[1])}</span>`).join(' · ')+'</div>';
- h+='<h2>Warning</h2>';
+ h+=makroHtml()+'<h2>Warning</h2>';
  for(const w of D.warnings)h+=`<div class="card"><b class="${esc(w.lvl)}">${esc(w.lvl.toUpperCase())}</b> [${esc(w.e)}] ${esc(w.t)}${w.aksi?'<br><small>Aksi: '+esc(w.aksi)+'</small>':''}</div>`;
  h+='<h2>Sinyal menunggu (harga Binance saat ini)</h2><div class="card w"><table><tr><th>Mesin<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Harga<th>Jarak ke entry<th>Tgl<th>Keputusan monitor<th>Catatan</tr>';
  for(const e of E)for(const r of e.pending)h+=`<tr><td>${esc(e.id)}<td>${esc(r.a)}<td>${esc(r.d)}<td>${esc(r.en)}<td>${esc(r.sl)}<td>${esc(r.tp)}<td>${esc(r.px??'-')}<td>${r.dist==null?'-':f(r.dist)+'%'}<td>${esc(r.w)}<td><b>${esc(r.kp||'-')}</b><td>${esc(r.kn||'')}</tr>`;
@@ -63,8 +63,26 @@ function html(){const E=D.engines;let h=barAtas();
  if(D.ujiHarian)h+='<h2>Uji batas harian (hipotesis)</h2><div class="card">Batas uji: '+D.ujiHarian.cap+' sinyal/hari. Hari ini: '+D.ujiHarian.hariIni+' sinyal, '+D.ujiHarian.lewatHariIni+' melewati batas.<br>'+(D.ujiHarian.grup||[]).map(g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)).join(' · ')+'<br><small>Dibaca hanya setelah tiap grup >= 30 trade.</small></div>';
  if(D.ujiAkhirPekan)h+='<h2>Uji akhir pekan (hipotesis)</h2><div class="card">'+D.ujiAkhirPekan.grup.map(g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)+(g.se!=null?' ± '+f(g.se):'')).join(' · ')+'<br><small>'+esc(D.ujiAkhirPekan.catatan)+'</small></div>';
  if(D.ujiEliz)h+='<h2>Uji volume vs @eliz883</h2><div class="card">Postingan orderbook tipis: '+(D.ujiEliz.postOrderbookTipis??0)+'. Postingan yang menyebut volume rendah: '+D.ujiEliz.postVolumeRendah+'. Hari terukur: '+D.ujiEliz.hariTerukur+'. Cocok: '+D.ujiEliz.cocok+'.<br>'+(D.ujiEliz.rinci||[]).map(x=>esc(x.d)+': '+f(x.vr)+'x '+(x.flag?'ditandai rendah':'TIDAK ditandai')+(x.bf?' (rekonstruksi)':'')).join('<br>')+(D.ujiEliz.sebaran?'<br>Sebaran 21 hari: '+D.ujiEliz.sebaran.rendah+'/'+D.ujiEliz.sebaran.n+' hari di bawah ambang; min '+f(D.ujiEliz.sebaran.min)+', median '+f(D.ujiEliz.sebaran.med)+', maks '+f(D.ujiEliz.sebaran.max):'')+'<br><small>'+esc(D.ujiEliz.catatan)+'</small></div>';
- h+=tharpHtml();h+=levelHtml();h+='<h2>@eliz883: kecocokan</h2><div class="card">Postingan terakhir di monitor: '+esc(D.eliz.lastPost||'-')+'<br>Ticker disebut: '+esc(D.eliz.tickers.join(', ')||'-')+'<div class="w"><table>'+D.eliz.cocok.map(c=>`<tr><td>$${esc(c.t)}<td>`+c.sinyal.map(s=>esc(s.e)+': '+esc(s.n.join('; ')||'tidak ada sinyal')).join(' | ')+'</tr>').join('')+'</table></div><small>Postingan baru: lampirkan (.docx) di chat Claude; Claude memberi data/eliz-posts.json terbaru.</small></div>';
+ h+=makroUjiHtml();h+=tharpHtml();h+=levelHtml();h+='<h2>@eliz883: kecocokan</h2><div class="card">Postingan terakhir di monitor: '+esc(D.eliz.lastPost||'-')+'<br>Ticker disebut: '+esc(D.eliz.tickers.join(', ')||'-')+'<div class="w"><table>'+D.eliz.cocok.map(c=>`<tr><td>$${esc(c.t)}<td>`+c.sinyal.map(s=>esc(s.e)+': '+esc(s.n.join('; ')||'tidak ada sinyal')).join(' | ')+'</tr>').join('')+'</table></div><small>Postingan baru: lampirkan (.docx) di chat Claude; Claude memberi data/eliz-posts.json terbaru.</small></div>';
  return h+lapHtml()}
+
+
+// ===== Kalender makro (FOMC, CPI, NFP, opsi Deribit) =====
+const wibFmt=iso=>new Date(iso).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false});
+function relJam(iso){const h=(Date.parse(iso)-Date.now())/36e5,a=Math.abs(h),s=a<1?Math.round(a*60)+' menit':a<48?a.toFixed(1)+' jam':(a/24).toFixed(1)+' hari';return h>=0?s+' lagi':s+' lalu'}
+function makroBar(){const M=D.makro;if(!M||M.galat||!M.berikut)return M&&M.galat?'<div class="card"><b class="kuning">MAKRO</b> '+esc(M.galat)+'</div>':'';
+ const n=Date.now(),A=M.berikut.filter(e=>{const h=(Date.parse(e.utc)-n)/36e5;return e.impact!=='rendah'&&h<=72&&h>=-e.sesudahJam});
+ if(!A.length){const x=M.berikut.find(e=>Date.parse(e.utc)>n);return '<div class="card"><small>Kalender makro: tidak ada rilis berdampak dalam 72 jam.'+(x?' Berikutnya: '+esc(x.jenis)+' '+relJam(x.utc)+' ('+esc(wibFmt(x.utc))+' WIB).':'')+'</small></div>'}
+ return A.map(e=>{const h=(Date.parse(e.utc)-n)/36e5,c=e.impact==='tinggi'&&h<=24?(Math.abs(h)<=2?'merah':'kuning'):'info';
+  return `<div class="card"><b class="${c}">MAKRO</b> ${esc(e.nama)}: ${relJam(e.utc)} <small>(${esc(wibFmt(e.utc))} WIB)${c!=='info'?' · pertimbangkan tidak membuka posisi baru sampai reaksi pertama reda':''}</small></div>`}).join('')}
+function makroHtml(){const M=D.makro;if(!M||!M.berikut)return '';
+ let h='<h2>Kalender makro</h2><div class="card w"><table><tr><th>Waktu (WIB)<th>Jenis<th>Dampak<th>Hitung mundur<th>Rilis</tr>';
+ for(const e of M.berikut)h+=`<tr><td>${esc(wibFmt(e.utc))}<td><b>${esc(e.jenis)}</b><td class="${e.impact==='tinggi'?'merah':e.impact==='sedang'?'kuning':'info'}">${esc(e.impact)}<td>${relJam(e.utc)}<td>${esc(e.nama)}</tr>`;
+ const K=M.sinkron||{};const kt=K.t?' · terakhir '+esc(wibFmt(K.t))+' WIB':'';
+ return h+'</table><small>Sumber resmi: Fed &amp; BLS, disinkronkan otomatis tiap build. Status sinkron: <b class="'+(K.status==='live'||K.status==='cache'?'hijau':K.status==='sebagian'?'kuning':K.status==='nonaktif'?'info':'merah')+'">'+esc(K.status||'-')+'</b>'+(K.fontes||[]).map(f=>' · '+esc(f.s)+(f.ok?' ✓':' ✗')+(f.stale?' (cache)':'')).join('')+kt+'. Cadangan: data/events.json (versi '+esc(M.versi||'-')+'). Risalah FOMC dan opsi Deribit dihitung dari aturan. Hanya informasi: mesin tidak diubah.</small></div>'}
+function makroUjiHtml(){const U=D.makro&&D.makro.uji;if(!U)return '';
+ const r=g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)+(g.se!=null?' ± '+f(g.se):'');
+ return '<h2>Uji jendela event (hipotesis)</h2><div class="card">'+U.grup.map(r).join(' · ')+(U.perJenis.length?'<br>'+U.perJenis.map(r).join(' · '):'')+'<br><small>Jendela tinggi −'+U.jendela.sebelumJam.tinggi+'j/+'+U.jendela.sesudahJam.tinggi+'j, sedang −'+U.jendela.sebelumJam.sedang+'j/+'+U.jendela.sesudahJam.sedang+'j. '+esc(U.catatan)+'</small></div>'}
 
 let jq='';
 function jSel(e){const q=jq.trim().toUpperCase();return q?e.jurnal.filter(r=>String(r.a).toUpperCase().includes(q)):e.jurnal.slice(0,120)}
