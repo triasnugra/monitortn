@@ -41,7 +41,7 @@ const dir={};for(const s of['LONG','SHORT'])dir[s]=stats(all.filter(r=>r.arah===
  if(th.ok&&th.n>=30){if(th.be<0.3)W('kuning',e.id,`Edge tipis terhadap biaya: biaya impas ${th.be.toFixed(2)}% (asumsi ${C.costPct}%). Selisih biaya/slippage kecil dapat menghapus profit`,'Uji biaya nyata di Binance (fee tier, slippage) sebelum uang sungguhan');if(th.top3!=null&&th.top3>0.5)W('kuning',e.id,`Hasil terkonsentrasi: 3 trade teratas = ${(th.top3*100).toFixed(0)}% dari total untung`,'Tanpa 3 trade itu R/trade = '+(th.meanEx3==null?'-':th.meanEx3.toFixed(2)))}
  out.engines.push({id:e.id,nama:e.nama,start:e.start,tharp:th,level:levelStat(all.filter(fin)),all:st,sejakBersama:sc,tujuhHari:s7,dir,ready,layak:ready.every(x=>x[0]),
   jurnal:[...all].reverse().map(r=>{const x=+r.tx;return{w:r.waktu.slice(0,16),a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,h:r.hasil,R:r.R,al:r.alasan,sk:r.score??null,gr:r.grade??null,wx:Number.isFinite(x)&&x>0?new Date(x).toISOString().slice(0,16).replace('T',' '):null,wd:Number.isFinite(x)&&x>0&&+r.due===x}}),
-  pending:pend.map(r=>({a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,px:r.px,dist:r.dist,w:r.waktu.slice(0,10),rk:r.rk}))});
+  pending:pend.map(r=>({a:r.aset,d:r.arah,en:r.entry,sl:r.sl,tp:r.tp,px:r.px,dist:r.dist,w:r.waktu.slice(0,10),wt:r.waktu.slice(0,16),rk:r.rk}))});
  const lastAny=J.at(-1),age=(now-new Date(lastAny.waktu.replace(' UTC','Z').replace(' ','T')))/36e5;
  if(age>36){const cm=await lastCommit(e),cage=cm==null?null:(now-cm)/36e5;
   if(cage!=null&&cage<=36)W('info',e.id,`Tidak ada baris jurnal baru ${age.toFixed(0)} jam, tetapi journal.json di-commit ${cage.toFixed(0)} jam lalu: workflow tampak hidup (mesin selektif)`,null);
@@ -133,4 +133,4 @@ const batas=new Date(Date.parse(hari)-4*864e5).toISOString().slice(0,10);
 LG=LG.filter(x=>x.d>=batas).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);
 out.log=LG.map(x=>x.d===hari?{...x,md:''}:x);
 fs.mkdirSync('site',{recursive:true});fs.writeFileSync('site/laporan-log.json',JSON.stringify(LG));
-fs.mkdirSync('site',{recursive:true});fs.copyFileSync('index.html','site/index.html');fs.writeFileSync('site/data.json',JSON.stringify(out));fs.writeFileSync('site/laporan.md',md);console.log('OK',out.engines.length,'mesin,',out.warnings.length,'warning')
+fs.mkdirSync('site',{recursive:true});fs.copyFileSync('index.html','site/index.html');if(fs.existsSync('vendor'))fs.cpSync('vendor','site/vendor',{recursive:true});fs.writeFileSync('site/data.json',JSON.stringify(out));fs.writeFileSync('site/laporan.md',md);console.log('OK',out.engines.length,'mesin,',out.warnings.length,'warning')

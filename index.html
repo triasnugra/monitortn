@@ -11,8 +11,14 @@ button,select,input{padding:6px 10px;margin:2px;border:1px solid var(--bd);backg
 textarea{width:100%;height:140px;background:var(--c);color:var(--fg);border:1px solid var(--bd);box-sizing:border-box}
 small{color:var(--mu)}.kol{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
 .biru{border-color:var(--b);background:rgba(47,123,255,.13)}.hijau{border-color:var(--g);background:rgba(30,132,73,.13)}
+.w{-webkit-overflow-scrolling:touch;max-width:100%}
+.hd{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-top:22px}.hd h2{margin:0}
+button.aktif{background:var(--b);border-color:var(--b);color:#fff;font-weight:600}
+button:disabled{opacity:.45;cursor:default}button{cursor:pointer}
+.pg{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:6px 0}.pg .pi{flex:1 1 100%;color:var(--mu);font-size:12px}.pg span.dot{color:var(--mu);padding:0 2px}
 </style></head><body>
 <h1>Monitor mesin tn, tnv2, tnv2c2</h1><small id="up"></small><div id="app">Memuat…</div>
+<script src="vendor/xlsx.full.min.js"></script>
 <script>
 const f=(x,d=2)=>x==null?'-':(+x).toFixed(d),pc=x=>x==null?'-':Math.round(x*100)+'%';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -52,12 +58,8 @@ function html(){const E=D.engines;let h=barAtas();
  for(const e of E)h+=`<div class="card"><b>${esc(e.nama)}</b>: `+e.ready.map(x=>`<span class="${x[0]?'ok':'merah'}">${x[0]?'✔':'✖'} ${esc(x[1])}</span>`).join(' · ')+'</div>';
  h+=makroHtml()+'<h2>Warning</h2>';
  for(const w of D.warnings)h+=`<div class="card"><b class="${esc(w.lvl)}">${esc(w.lvl.toUpperCase())}</b> [${esc(w.e)}] ${esc(w.t)}${w.aksi?'<br><small>Aksi: '+esc(w.aksi)+'</small>':''}</div>`;
- h+='<h2>Sinyal menunggu (harga Binance saat ini)</h2><div class="card w"><table><tr><th>Mesin<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Harga<th>Jarak ke entry<th>Tgl<th>Keputusan monitor<th>Catatan</tr>';
- for(const e of E)for(const r of e.pending)h+=`<tr><td>${esc(e.id)}<td>${esc(r.a)}<td>${esc(r.d)}<td>${esc(r.en)}<td>${esc(r.sl)}<td>${esc(r.tp)}<td>${esc(r.px??'-')}<td>${r.dist==null?'-':f(r.dist)+'%'}<td>${esc(r.w)}<td><b>${esc(r.kp||'-')}</b><td>${esc(r.kn||'')}</tr>`;
- h+='</table></div>';
- h+='<h2>Jurnal analisis</h2>'+E.map((e,i)=>`<button onclick="cur=${i};draw()">${esc(e.id)}</button>`).join('');
- const e=E[cur];
- if(e)h+='<div><input id="jq" type="search" placeholder="Cari koin (mis. PUMP)" value="'+esc(jq)+'" oninput="jqSet(this.value)"> <small id="jinfo">'+jInfo(e)+'</small></div><div class="card w"><table><tr><th>Waktu<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Hasil<th>Waktu hasil (UTC)<th>R<th>Skor<th>Alasan</tr><tbody id="jb">'+jRows(e)+'</tbody></table></div>';
+ h+='<div id="psec">'+pSecHtml()+'</div>';
+ h+='<div id="jsec">'+jSecHtml()+'</div>';
  if(D.audit)h+='<h2>Audit lapisan keputusan</h2><div class="card">'+(D.audit.grup.map(g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)).join(' · ')||'Belum ada sinyal selesai')+'<br><small>'+esc(D.audit.catatan)+'</small></div>';
  if(D.gapDiag)h+='<h2>Diagnostik data bolong</h2><div class="card">'+D.gapDiag.gagal.length+'/'+D.gapDiag.cek+' koin top volume: '+esc(D.gapDiag.gagal.map(x=>x.s).join(', ')||'tidak ada')+'</div>';
  if(D.ujiHarian)h+='<h2>Uji batas harian (hipotesis)</h2><div class="card">Batas uji: '+D.ujiHarian.cap+' sinyal/hari. Hari ini: '+D.ujiHarian.hariIni+' sinyal, '+D.ujiHarian.lewatHariIni+' melewati batas.<br>'+(D.ujiHarian.grup||[]).map(g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)).join(' · ')+'<br><small>Dibaca hanya setelah tiap grup >= 30 trade.</small></div>';
@@ -84,11 +86,62 @@ function makroUjiHtml(){const U=D.makro&&D.makro.uji;if(!U)return '';
  const r=g=>esc(g.g)+': n='+g.n+', TP '+g.tp+', R/trade '+f(g.r)+(g.se!=null?' ± '+f(g.se):'');
  return '<h2>Uji jendela event (hipotesis)</h2><div class="card">'+U.grup.map(r).join(' · ')+(U.perJenis.length?'<br>'+U.perJenis.map(r).join(' · '):'')+'<br><small>Jendela tinggi −'+U.jendela.sebelumJam.tinggi+'j/+'+U.jendela.sesudahJam.tinggi+'j, sedang −'+U.jendela.sebelumJam.sedang+'j/+'+U.jendela.sesudahJam.sedang+'j. '+esc(U.catatan)+'</small></div>'}
 
-let jq='';
-function jSel(e){const q=jq.trim().toUpperCase();return q?e.jurnal.filter(r=>String(r.a).toUpperCase().includes(q)):e.jurnal.slice(0,120)}
-function jInfo(e){const n=jSel(e).length,q=jq.trim();return q?'Menampilkan '+n+' baris koin "'+esc(q)+'" dari '+e.jurnal.length+' baris. Waktu hasil = waktu keluar menurut jurnal mesin; "(batas waktu)" = order kedaluwarsa/tidak terisi.':'Menampilkan '+n+' baris terbaru dari '+e.jurnal.length+'; ketik nama koin untuk mencari di semua baris. Waktu hasil = waktu keluar menurut jurnal mesin; "(batas waktu)" = order kedaluwarsa/tidak terisi.'}
-function jRows(e){return jSel(e).map(r=>`<tr><td>${esc(r.w)}<td>${esc(r.a)}<td>${esc(r.d)}<td>${esc(r.en)}<td>${esc(r.sl)}<td>${esc(r.tp)}<td class="${esc(r.h)}">${esc(r.h)}<td>${r.wx?esc(r.wx)+(r.wd?' <span class="info">(batas waktu)</span>':''):'-'}<td>${esc(r.R)}<td>${esc(r.sk??'')} ${esc(r.gr??'')}<td>${esc(r.al||'')}</tr>`).join('')}
-function jqSet(v){jq=v;const e=D.engines[cur],b=document.getElementById('jb');if(!e||!b)return;b.innerHTML=jRows(e);document.getElementById('jinfo').innerHTML=jInfo(e)}
+let jq='',jpg=1,pcur=-1,ppg=1;const PER=15;
+// ===== Utilitas pagination & Excel (hanya memotong tampilan; data utama D.engines tidak diubah) =====
+function pgNums(n,c){const t=Math.max(1,Math.ceil(n/PER));if(t<=7)return Array.from({length:t},(_,i)=>i+1);const o=[1];let a=Math.max(2,c-1),z=Math.min(t-1,c+1);if(c<=3){a=2;z=4}if(c>=t-2){a=t-3;z=t-1}if(a>2)o.push(0);for(let i=a;i<=z;i++)o.push(i);if(z<t-1)o.push(0);o.push(t);return o}
+function pgClamp(n,p){const t=Math.max(1,Math.ceil(n/PER));return Math.min(Math.max(1,p),t)}
+function pgHtml(n,p,fn){const t=Math.max(1,Math.ceil(n/PER)),a=n?(p-1)*PER+1:0,z=Math.min(n,p*PER);
+ return '<div class="pg"><span class="pi">Menampilkan '+a+'–'+z+' dari '+n+' baris</span><button '+(p<=1?'disabled ':'')+'onclick="'+fn+'('+(p-1)+')">Previous</button>'+pgNums(n,p).map(x=>x?'<button class="'+(x===p?'aktif':'')+'" onclick="'+fn+'('+x+')">'+x+'</button>':'<span class="dot">…</span>').join('')+'<button '+(p>=t?'disabled ':'')+'onclick="'+fn+'('+(p+1)+')">Next</button></div>'}
+const numOr=v=>{if(typeof v==='number')return v;if(typeof v==='string'&&/^-?\d+(\.\d+)?$/.test(v.trim()))return +v;return v==null?'':v};
+function xlsDown(sheets,nama){
+ const go=()=>{try{const wb=XLSX.utils.book_new(),used=new Set();
+  for(const sh of sheets){const ws=XLSX.utils.aoa_to_sheet([sh.head,...sh.rows]);
+   ws['!cols']=sh.head.map((h,i)=>({wch:Math.min(60,Math.max(String(h).length+2,...sh.rows.slice(0,300).map(r=>String(r[i]??'').length+2)))}));
+   if(sh.rows.length)ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:sh.rows.length,c:sh.head.length-1}})};
+   let nm=String(sh.name).replace(/[\\\/?*\[\]:]/g,'_').slice(0,31)||'Sheet',k=2;while(used.has(nm.toLowerCase()))nm=nm.slice(0,28)+'_'+k++;used.add(nm.toLowerCase());
+   XLSX.utils.book_append_sheet(wb,ws,nm)}
+  const d=new Date(Date.now()+7*36e5).toISOString().slice(0,16).replace(/[-:]/g,'').replace('T','-');
+  XLSX.writeFile(wb,nama+'-'+d+'-WIB.xlsx')}catch(e){alert('Gagal membuat file Excel: '+(e.message||e))}};
+ if(window.XLSX)return go();
+ const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=go;sc.onerror=()=>alert('Library SheetJS (xlsx) gagal dimuat. Periksa koneksi lalu coba lagi.');document.head.appendChild(sc)}
+
+// ===== SINYAL MENUNGGU: tab mesin + pagination + Excel =====
+function pAll(){const o=[];D.engines.forEach((e,ei)=>(e.pending||[]).forEach((r,ri)=>o.push({e,r,ei,ri})));return o}
+const pKey=x=>String(x.r.wt||x.r.w||'');
+function pSort(a){return a.slice().sort((x,y)=>{const A=pKey(x),B=pKey(y);return A<B?1:A>B?-1:(y.ri-x.ri)||(x.ei-y.ei)})}
+function pSel(){const E=D.engines,a=pAll();return pSort(pcur>=0&&E[pcur]?a.filter(x=>x.ei===pcur):a)}
+function pRow(x){const e=x.e,r=x.r;return `<tr><td>${esc(e.id)}<td>${esc(r.a)}<td>${esc(r.d)}<td>${esc(r.en)}<td>${esc(r.sl)}<td>${esc(r.tp)}<td>${esc(r.px??'-')}<td>${r.dist==null?'-':f(r.dist)+'%'}<td>${esc(r.w)}<td><b>${esc(r.kp||'-')}</b><td>${esc(r.kn||'')}</tr>`}
+function pRows(){const a=pSel();ppg=pgClamp(a.length,ppg);return a.slice((ppg-1)*PER,ppg*PER).map(pRow).join('')}
+function pTabs(){const E=D.engines;return '<button class="'+(pcur<0?'aktif':'')+'" onclick="pTab(-1)">Semua</button>'+E.map((e,i)=>`<button class="${pcur===i?'aktif':''}" onclick="pTab(${i})">${esc(e.id)}</button>`).join('')}
+function pSecHtml(){const n=pSel().length;
+ return '<div class="hd"><h2>Sinyal menunggu (harga Binance saat ini)</h2><button onclick="pXls()">Download Excel (.xlsx)</button></div><div id="ptabs">'+pTabs()+'</div><div class="card w"><table><tr><th>Mesin<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Harga<th>Jarak ke entry<th>Tgl<th>Keputusan monitor<th>Catatan</tr><tbody id="pb">'+pRows()+'</tbody></table></div><div id="ppg">'+pgHtml(n,ppg,'pGo')+'</div>'}
+function pPart(){const n=pSel().length,b=document.getElementById('pb');if(!b)return;b.innerHTML=pRows();document.getElementById('ppg').innerHTML=pgHtml(n,ppg,'pGo');document.getElementById('ptabs').innerHTML=pTabs()}
+function pTab(i){pcur=i;ppg=1;pPart()}
+function pGo(n){ppg=pgClamp(pSel().length,n);pPart()}
+function pXls(){if(!D)return;const head=['Mesin','Koin','Arah','Entry','SL','TP','Harga','Jarak ke entry (%)','Tgl','Waktu sinyal','Keputusan monitor','Catatan'];
+ const row=x=>{const r=x.r;return [x.e.id,r.a,r.d,numOr(r.en),numOr(r.sl),numOr(r.tp),numOr(r.px),r.dist==null?'':+(+r.dist).toFixed(4),r.w||'',r.wt||'',r.kp||'',r.kn||'']};
+ const sh=[{name:'Semua',head,rows:pSort(pAll()).map(row)}];
+ D.engines.forEach((e,ei)=>sh.push({name:e.id,head,rows:pSort(pAll().filter(x=>x.ei===ei)).map(row)}));
+ xlsDown(sh,'sinyal-menunggu')}
+
+// ===== JURNAL ANALISIS: tab mesin (tidak diubah) + pagination + Excel =====
+function jSel(e){const q=jq.trim().toUpperCase();return q?e.jurnal.filter(r=>String(r.a).toUpperCase().includes(q)):e.jurnal}
+function jInfo(e){const n=jSel(e).length,q=jq.trim();return q?'Hasil pencarian koin "'+esc(q)+'": '+n+' baris dari total '+e.jurnal.length+' baris. Waktu hasil = waktu keluar menurut jurnal mesin; "(batas waktu)" = order kedaluwarsa/tidak terisi.':'Total '+e.jurnal.length+' baris (terbaru di atas, 15 baris per halaman); ketik nama koin untuk mencari di semua baris. Waktu hasil = waktu keluar menurut jurnal mesin; "(batas waktu)" = order kedaluwarsa/tidak terisi.'}
+function jRows(e){const a=jSel(e);jpg=pgClamp(a.length,jpg);return a.slice((jpg-1)*PER,jpg*PER).map(r=>`<tr><td>${esc(r.w)}<td>${esc(r.a)}<td>${esc(r.d)}<td>${esc(r.en)}<td>${esc(r.sl)}<td>${esc(r.tp)}<td class="${esc(r.h)}">${esc(r.h)}<td>${r.wx?esc(r.wx)+(r.wd?' <span class="info">(batas waktu)</span>':''):'-'}<td>${esc(r.R)}<td>${esc(r.sk??'')} ${esc(r.gr??'')}<td>${esc(r.al||'')}</tr>`).join('')}
+function jTabs(){return D.engines.map((e,i)=>`<button class="${cur===i?'aktif':''}" onclick="jTab(${i})">${esc(e.id)}</button>`).join('')}
+function jSecHtml(){const E=D.engines,e=E[cur];
+ let h='<div class="hd"><h2>Jurnal analisis</h2><button onclick="jXls()">Download Excel (.xlsx)</button></div><div id="jtabs">'+jTabs()+'</div>';
+ if(e)h+='<div><input id="jq" type="search" placeholder="Cari koin (mis. PUMP)" value="'+esc(jq)+'" oninput="jqSet(this.value)"> <small id="jinfo">'+jInfo(e)+'</small></div><div class="card w"><table><tr><th>Waktu<th>Koin<th>Arah<th>Entry<th>SL<th>TP<th>Hasil<th>Waktu hasil (UTC)<th>R<th>Skor<th>Alasan</tr><tbody id="jb">'+jRows(e)+'</tbody></table></div><div id="jpg">'+pgHtml(jSel(e).length,jpg,'jGo')+'</div>';
+ return h}
+function jPart(){const e=D.engines[cur],b=document.getElementById('jb');if(!e||!b)return;b.innerHTML=jRows(e);document.getElementById('jinfo').innerHTML=jInfo(e);document.getElementById('jpg').innerHTML=pgHtml(jSel(e).length,jpg,'jGo');document.getElementById('jtabs').innerHTML=jTabs()}
+function jTab(i){cur=i;jpg=1;jPart()}
+function jGo(n){const e=D.engines[cur];if(!e)return;jpg=pgClamp(jSel(e).length,n);jPart()}
+function jqSet(v){jq=v;jpg=1;jPart()}
+function jXls(){if(!D)return;const head=['Mesin','Waktu','Koin','Arah','Entry','SL','TP','Hasil','Waktu hasil (UTC)','Batas waktu','R','Skor','Grade','Alasan'];
+ const row=(e,r)=>[e.id,r.w,r.a,r.d,numOr(r.en),numOr(r.sl),numOr(r.tp),r.h||'',r.wx||'',r.wd?'Ya':'',numOr(r.R),r.sk??'',r.gr??'',r.al||''];
+ const sh=[{name:'Semua',head,rows:D.engines.flatMap(e=>e.jurnal.map(r=>row(e,r)))}];
+ D.engines.forEach(e=>sh.push({name:e.id,head,rows:e.jurnal.map(r=>row(e,r))}));
+ xlsDown(sh,'jurnal-analisis')}
 function tharpHtml(){
  let h='<h2>Uji ala Van Tharp</h2><div class="card w"><table><tr><th>Mesin<th>N<th>R/trade<th>SD<th>SQN<th>SQN100<th>Kelas<th>Biaya impas<th>R @0,1%<th>R @0,3%<th>R @0,5%<th>3 teratas / untung<th>R tanpa 3 teratas</tr>';
  for(const e of D.engines){const t=e.tharp;if(!t||!t.ok){h+=`<tr><td>${esc(e.id)}<td colspan="12">data belum cukup`;continue}
